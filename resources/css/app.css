@@ -1,0 +1,32 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* Palet warna perusahaan: cokelat kopi / kakao */
+    --color-brand-50: #fdf8f2;
+    --color-brand-100: #f8ecdf;
+    --color-brand-200: #eed7b8;
+    --color-brand-300: #e0bb8c;
+    --color-brand-400: #cf985e;
+    --color-brand-500: #c07f42;
+    --color-brand-600: #a96634;
+    --color-brand-700: #8b502c;
+    --color-brand-800: #71422a;
+    --color-brand-900: #5d3826;
+    --color-brand-950: #321c13;
+
+    /* Warna aksen: hijau daun kopi */
+    --color-accent-100: #eef5e7;
+    --color-accent-300: #bfd8a6;
+    --color-accent-500: #6f9c4a;
+    --color-accent-600: #578038;
+    --color-accent-700: #44662c;
+}
+
