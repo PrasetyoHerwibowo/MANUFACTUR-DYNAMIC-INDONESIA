@@ -16,7 +16,6 @@ class Category extends Model
         'slug',
         'tagline',
         'description',
-        'image',
         'sort_order',
         'is_active',
     ];
@@ -54,18 +53,5 @@ class Category extends Model
     public function scopeOrdered(Builder $query): Builder
     {
         return $query->orderBy('sort_order')->orderBy('name');
-    }
-
-    public function imageUrl(): ?string
-    {
-        return $this->image ? \App\Support\ImageUploader::url($this->image) : null;
-    }
-
-    /**
-     * URL foto jenis mesin, dipakai di tampilan publik.
-     */
-    public function getPhotoAttribute(): string
-    {
-        return $this->imageUrl() ?? \App\Support\ImageUploader::placeholder();
     }
 }

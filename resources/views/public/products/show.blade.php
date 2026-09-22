@@ -1,4 +1,4 @@
-@extends('layouts.public')
+ @extends('layouts.public')
 
 @section('title', $machine->name.' — '.$company->name)
 @section('meta_description', \Illuminate\Support\Str::limit(strip_tags($machine->short_description ?: $machine->function ?: $machine->name), 150))
@@ -19,7 +19,7 @@
         <div class="grid gap-10 lg:grid-cols-3">
             {{-- Foto utama + galeri --}}
             <div class="lg:col-span-2">
-                <div class="overflow-hidden rounded-3xl border border-stone-200 bg-stone-100 shadow-sm">
+                <div class="overflow-hidden rounded-3xl border border-stone-200 dark:border-gray-700 bg-stone-100 dark:bg-gray-700 shadow-sm">
                     <img src="{{ $machine->photo }}" alt="{{ $machine->name }}" class="aspect-[4/3] w-full object-cover">
                 </div>
 
@@ -27,7 +27,7 @@
                     <div class="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4">
                         @foreach ($machine->images as $image)
                             <a href="{{ $image->url() }}" target="_blank" rel="noopener"
-                               class="group overflow-hidden rounded-xl border border-stone-200 bg-stone-100">
+                               class="group overflow-hidden rounded-xl border border-stone-200 dark:border-gray-700 bg-stone-100 dark:bg-gray-700">
                                 <img src="{{ $image->url() }}" alt="{{ $image->caption ?: $machine->name }}" loading="lazy"
                                      class="aspect-[4/3] w-full object-cover transition duration-500 group-hover:scale-105">
                             </a>
@@ -38,26 +38,26 @@
 
             {{-- Informasi ringkas --}}
             <aside class="space-y-5">
-                <div class="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
+                <div class="rounded-2xl border border-stone-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm">
                     @if ($machine->category)
                         <a href="{{ route('products.index', ['kategori' => $machine->category->slug]) }}"
-                           class="inline-block rounded-full bg-brand-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-brand-700">
+                           class="inline-block rounded-full bg-coffee-50 dark:bg-coffee-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-coffee-700 dark:text-coffee-400">
                             {{ $machine->category->name }}
                         </a>
                     @endif
 
-                    <h2 class="mt-3 text-xl font-extrabold text-stone-900">{{ $machine->name }}</h2>
+                    <h2 class="mt-3 text-xl font-extrabold text-stone-900 dark:text-white">{{ $machine->name }}</h2>
 
                     @if ($machine->model_code)
-                        <p class="mt-1 text-sm font-semibold text-stone-500">
-                            Kode model: <span class="text-brand-700">{{ $machine->model_code }}</span>
+                        <p class="mt-1 text-sm font-semibold text-stone-500 dark:text-gray-400">
+                            Kode model: <span class="text-coffee-700 dark:text-coffee-400">{{ $machine->model_code }}</span>
                         </p>
                     @endif
 
                     @if ($machine->function)
-                        <div class="mt-5 rounded-xl bg-stone-50 p-4">
-                            <p class="text-xs font-bold uppercase tracking-wide text-stone-400">Fungsi Mesin</p>
-                            <p class="mt-2 text-sm leading-relaxed text-stone-600">{{ $machine->function }}</p>
+                        <div class="mt-5 rounded-xl bg-stone-50 dark:bg-gray-800/40 p-4">
+                            <p class="text-xs font-bold uppercase tracking-wide text-stone-400 dark:text-gray-500">Fungsi Mesin</p>
+                            <p class="mt-2 text-sm leading-relaxed text-stone-600 dark:text-gray-300">{{ $machine->function }}</p>
                         </div>
                     @endif
 
@@ -70,9 +70,9 @@
                             'Material' => $machine->material,
                         ] as $label => $value)
                             @if (filled($value))
-                                <div class="flex justify-between gap-4 border-b border-dashed border-stone-200 pb-2 last:border-0">
-                                    <span class="text-stone-500">{{ $label }}</span>
-                                    <span class="text-right font-semibold text-stone-800">{{ $value }}</span>
+                                <div class="flex justify-between gap-4 border-b border-dashed border-stone-200 dark:border-gray-700 pb-2 last:border-0">
+                                    <span class="text-stone-500 dark:text-gray-400">{{ $label }}</span>
+                                    <span class="text-right font-semibold text-stone-800 dark:text-white">{{ $value }}</span>
                                 </div>
                             @endif
                         @endforeach
@@ -80,7 +80,7 @@
 
                     <div class="mt-6 space-y-2.5">
                         <a href="{{ route('contact', ['mesin' => $machine->slug]) }}"
-                           class="block rounded-xl bg-brand-700 px-5 py-3 text-center text-sm font-bold text-white transition hover:bg-brand-800">
+                           class="block rounded-xl bg-gradient-to-r from-coffee-600 to-coffee-700 px-5 py-3 text-center text-sm font-bold text-white transition hover:from-coffee-700 hover:to-coffee-800">
                             Minta Penawaran
                         </a>
 
@@ -88,19 +88,19 @@
                         @if ($wa)
                             <a href="https://wa.me/{{ $wa }}?text={{ urlencode('Halo, saya ingin bertanya tentang mesin '.$machine->name) }}"
                                target="_blank" rel="noopener"
-                               class="block rounded-xl border border-accent-300 bg-accent-100 px-5 py-3 text-center text-sm font-bold text-accent-700 transition hover:bg-accent-300/60">
+                               class="block rounded-xl border border-accent-300 bg-accent-100 px-5 py-3 text-center text-sm font-bold text-accent-700 transition hover:bg-accent-300/60 dark:border-accent-700/50 dark:bg-accent-700/15 dark:text-accent-300 dark:hover:bg-accent-700/25">
                                 Tanya via WhatsApp
                             </a>
                         @endif
                     </div>
                 </div>
 
-                <div class="rounded-2xl border border-stone-200 bg-stone-50 p-6">
-                    <p class="text-xs font-bold uppercase tracking-wide text-stone-400">Butuh model lain?</p>
-                    <p class="mt-2 text-sm leading-relaxed text-stone-600">
+                <div class="rounded-2xl border border-stone-200 dark:border-gray-700 bg-stone-50 dark:bg-gray-800/40 p-6">
+                    <p class="text-xs font-bold uppercase tracking-wide text-stone-400 dark:text-gray-500">Butuh model lain?</p>
+                    <p class="mt-2 text-sm leading-relaxed text-stone-600 dark:text-gray-300">
                         Kami dapat menyesuaikan dimensi, kapasitas, dan material mesin sesuai kebutuhan lini produksi Anda.
                     </p>
-                    <a href="{{ route('products.index') }}" class="mt-3 inline-block text-sm font-bold text-brand-700">
+                    <a href="{{ route('products.index') }}" class="mt-3 inline-block text-sm font-bold text-coffee-700 dark:text-coffee-400">
                         Lihat semua model &rarr;
                     </a>
                 </div>
@@ -111,9 +111,9 @@
         <div class="mt-14 grid gap-10 lg:grid-cols-3">
             @if ($machine->description)
                 <div class="lg:col-span-2">
-                    <h3 class="text-xl font-extrabold text-stone-900">Deskripsi &amp; keunggulan</h3>
+                    <h3 class="text-xl font-extrabold text-stone-900 dark:text-white">Deskripsi &amp; keunggulan</h3>
 
-                    <div class="mt-4 space-y-4 text-sm leading-relaxed text-stone-600">
+                    <div class="mt-4 space-y-4 text-sm leading-relaxed text-stone-600 dark:text-gray-300">
                         @foreach (preg_split('/\r\n|\r|\n/', $machine->description) as $paragraph)
                             @if (trim($paragraph) !== '')
                                 <p>{{ trim($paragraph) }}</p>
@@ -124,14 +124,14 @@
             @endif
 
             @if (! empty($machine->specificationLines()))
-                <div class="{{ $machine->description ? 'rounded-2xl border border-stone-200 bg-white p-6 shadow-sm' : 'max-w-2xl lg:col-span-2' }}">
-                    <h3 class="text-base font-extrabold text-stone-900">Spesifikasi teknis</h3>
+                <div class="{{ $machine->description ? 'rounded-2xl border border-stone-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm' : 'max-w-2xl lg:col-span-2' }}">
+                    <h3 class="text-base font-extrabold text-stone-900 dark:text-white">Spesifikasi teknis</h3>
 
                     <dl class="mt-4 space-y-3 text-sm">
                         @foreach ($machine->specificationLines() as $label => $value)
-                            <div class="flex justify-between gap-4 border-b border-dashed border-stone-200 pb-2 last:border-0">
-                                <dt class="text-stone-500">{{ $label }}</dt>
-                                <dd class="text-right font-semibold text-stone-800">{{ $value }}</dd>
+                            <div class="flex justify-between gap-4 border-b border-dashed border-stone-200 dark:border-gray-700 pb-2 last:border-0">
+                                <dt class="text-stone-500 dark:text-gray-400">{{ $label }}</dt>
+                                <dd class="text-right font-semibold text-stone-800 dark:text-white">{{ $value }}</dd>
                             </div>
                         @endforeach
                     </dl>
@@ -142,7 +142,7 @@
         {{-- Model serupa --}}
         @if ($related->isNotEmpty())
             <div class="mt-16">
-                <h3 class="text-xl font-extrabold text-stone-900">Model serupa</h3>
+                <h3 class="text-xl font-extrabold text-stone-900 dark:text-white">Model serupa</h3>
 
                 <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     @foreach ($related as $item)

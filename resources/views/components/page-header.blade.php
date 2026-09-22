@@ -1,17 +1,17 @@
 @props(['title', 'subtitle' => null, 'crumbs' => []])
 
-<section class="relative overflow-hidden bg-gradient-to-br from-brand-950 via-brand-900 to-brand-700 text-white">
-    <div class="absolute -right-20 -top-24 h-72 w-72 rounded-full bg-brand-500/20 blur-3xl"></div>
+<section class="relative overflow-hidden bg-gradient-to-br from-brand-950 via-brand-900 to-coffee-800 text-white transition-colors duration-300 dark:from-gray-900 dark:via-gray-900 dark:to-coffee-900">
+    <div class="absolute -right-20 -top-24 h-72 w-72 rounded-full bg-coffee-500/25 blur-3xl"></div>
 
     <div class="relative mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
         @if (! empty($crumbs))
-            <nav class="mb-4 flex flex-wrap items-center gap-2 text-xs font-semibold text-brand-100">
+            <nav class="mb-4 flex flex-wrap items-center gap-2 text-xs font-semibold text-brand-100 dark:text-gray-300">
                 @foreach ($crumbs as $crumb)
                     @if (! empty($crumb['url']))
-                        <a href="{{ $crumb['url'] }}" class="transition hover:text-white">{{ $crumb['label'] }}</a>
-                        <span class="text-brand-100/50">/</span>
+                        <a href="{{ $crumb['url'] }}" class="transition hover:text-coffee-300 dark:hover:text-coffee-400">{{ $crumb['label'] }}</a>
+                        <span class="text-brand-100/50 dark:text-gray-600">/</span>
                     @else
-                        <span class="text-white">{{ $crumb['label'] }}</span>
+                        <span class="text-white dark:text-coffee-400">{{ $crumb['label'] }}</span>
                     @endif
                 @endforeach
             </nav>
@@ -20,7 +20,7 @@
         <h1 class="text-2xl font-extrabold tracking-tight sm:text-3xl lg:text-4xl">{{ $title }}</h1>
 
         @if ($subtitle)
-            <p class="mt-4 max-w-3xl text-sm leading-relaxed text-brand-100 sm:text-base">{{ $subtitle }}</p>
+            <p class="mt-4 max-w-3xl text-sm leading-relaxed text-brand-100 dark:text-gray-300 sm:text-base">{{ $subtitle }}</p>
         @endif
     </div>
 </section>

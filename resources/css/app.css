@@ -5,6 +5,9 @@
 @source '../**/*.blade.php';
 @source '../**/*.js';
 
+/* Mode gelap diaktifkan lewat class .dark pada <html> (tombol tema di panel admin). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
     --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
@@ -28,5 +31,181 @@
     --color-accent-500: #6f9c4a;
     --color-accent-600: #578038;
     --color-accent-700: #44662c;
+
+    /* Palet coffee: warna utama tema panel admin */
+    --color-coffee-50: #fdf8f0;
+    --color-coffee-100: #f9edd9;
+    --color-coffee-200: #f2d7b0;
+    --color-coffee-300: #e9bb7e;
+    --color-coffee-400: #e19a4d;
+    --color-coffee-500: #db7f2e;
+    --color-coffee-600: #cd6624;
+    --color-coffee-700: #ab4d1f;
+    --color-coffee-800: #8a3e20;
+    --color-coffee-900: #70351d;
+
+    /* Animasi */
+    --animate-fade-in: fadeIn 0.5s ease-out both;
+    --animate-slide-up: slideUp 0.6s ease-out both;
+    --animate-float: float 3s ease-in-out infinite;
+    --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+    @keyframes fadeIn {
+        0% {
+            opacity: 0;
+        }
+        100% {
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideUp {
+        0% {
+            transform: translateY(20px);
+            opacity: 0;
+        }
+        100% {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes float {
+        0%,
+        100% {
+            transform: translateY(0);
+        }
+        50% {
+            transform: translateY(-10px);
+        }
+    }
 }
+
+@layer components {
+    /* Kartu kaca pada header/sidebar gelap panel admin. */
+    .glass-card {
+        background-color: #ffffff;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 2px rgb(16 24 40 / 0.05);
+    }
+
+    .dark .glass-card {
+        background-color: rgb(17 24 39 / 0.7);
+        border-color: rgb(255 255 255 / 0.05);
+        backdrop-filter: blur(10px);
+        box-shadow: none;
+    }
+
+    /* Bar progres di kartu statistik dashboard: tumbuh dari kiri saat kartu tampil. */
+    .metric-bar {
+        transform-origin: left center;
+        transition: width 1s ease-out;
+        animation: metricGrow 1s ease-out both;
+    }
+
+    /* Kartu statistik bergradasi pada dashboard (disamakan dengan tema Eiko Coffee Roaster). */
+    .stat-card-gradient-1 {
+        background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .stat-card-gradient-2 {
+        background-image: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .stat-card-gradient-3 {
+        background-image: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .stat-card-gradient-4 {
+        background-image: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    }
+
+    .stat-card-gradient-5 {
+        background-image: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    }
+
+    /* Wadah grafik: kanvas Chart.js memenuhi tinggi wadah yang ditentukan. */
+    .chart-container {
+        position: relative;
+        height: 100%;
+        width: 100%;
+    }
+
+    /* Halaman dashboard dipisah per .page agar konsisten dengan panel admin. */
+    .page {
+        display: none;
+    }
+
+    .page.active {
+        display: block;
+    }
+}
+
+/* Sidebar panel admin: tersembunyi di mobile, dibuka lewat tombol menu. */
+[data-sidebar] {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+}
+
+[data-sidebar].is-open {
+    transform: translateX(0);
+}
+
+@media (min-width: 1024px) {
+    [data-sidebar] {
+        transform: translateX(0);
+    }
+}
+
+/* Latar gelap sidebar mobile: memudar halus mengikuti animasi sidebar. */
+[data-sidebar-backdrop] {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+[data-sidebar-backdrop].is-open {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Bar metrik tumbuh dari kiri (tanpa JavaScript, tetap akurat bila JS mati). */
+@keyframes metricGrow {
+    from {
+        transform: scaleX(0);
+    }
+    to {
+        transform: scaleX(1);
+    }
+}
+
+/* Hormati preferensi pengguna yang meminta animasi seminimal mungkin. */
+@media (prefers-reduced-motion: reduce) {
+    [data-sidebar],
+    [data-sidebar-backdrop],
+    .metric-bar {
+        transition: none;
+        animation: none;
+    }
+}
+
+/* Scrollbar tipis khas panel admin. */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+    background: #475569;
+}
+
 

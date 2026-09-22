@@ -2,7 +2,7 @@
 
 @section('title', 'Model Mesin')
 @section('page_title', 'Model Mesin')
-@section('page_subtitle', 'Kelola model mesin, fungsi, spesifikasi, dan galeri foto')
+@section('page_subtitle', 'Kelola model mesin, fungsi, dan spesifikasi')
 
 @section('content')
     <div class="flex flex-wrap items-center justify-between gap-3">
@@ -52,8 +52,6 @@
                         <th class="px-5 py-3.5">Model Mesin</th>
                         <th class="px-5 py-3.5">Jenis Mesin</th>
                         <th class="px-5 py-3.5">Fungsi Mesin</th>
-                        <th class="px-5 py-3.5">Galeri</th>
-                        <th class="px-5 py-3.5">Status</th>
                         <th class="px-5 py-3.5 text-right">Aksi</th>
                     </tr>
                 </thead>
@@ -70,25 +68,12 @@
                                 @if ($machine->model_code)
                                     <p class="text-xs text-stone-500">Kode: {{ $machine->model_code }}</p>
                                 @endif
-                                @if ($machine->is_featured)
-                                    <span class="mt-1 inline-block rounded-full bg-accent-100 px-2 py-0.5 text-[10px] font-bold text-accent-700">Unggulan</span>
-                                @endif
                             </td>
 
                             <td class="px-5 py-3 text-stone-600">{{ $machine->category?->name ?? '—' }}</td>
 
                             <td class="max-w-xs px-5 py-3 text-xs leading-relaxed text-stone-500">
                                 {{ \Illuminate\Support\Str::limit($machine->function, 90) ?: '—' }}
-                            </td>
-
-                            <td class="px-5 py-3 text-stone-600">{{ $machine->images_count }} foto</td>
-
-                            <td class="px-5 py-3">
-                                @if ($machine->is_active)
-                                    <span class="rounded-full bg-accent-100 px-2.5 py-1 text-[11px] font-bold text-accent-700">Aktif</span>
-                                @else
-                                    <span class="rounded-full bg-stone-200 px-2.5 py-1 text-[11px] font-bold text-stone-600">Nonaktif</span>
-                                @endif
                             </td>
 
                             <td class="px-5 py-3">
@@ -117,7 +102,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-5 py-10 text-center text-sm text-stone-500">
+                            <td colspan="5" class="px-5 py-10 text-center text-sm text-stone-500">
                                 Belum ada model mesin yang sesuai.
                             </td>
                         </tr>

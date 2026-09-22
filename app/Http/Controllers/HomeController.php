@@ -19,22 +19,15 @@ class HomeController extends Controller
             ->take(6)
             ->get();
 
+        // Model mesin unggulan dipilih otomatis: enam model aktif pertama
+        // menurut urutan tampil, karena penandaan unggulan tidak lagi diatur
+        // dari form admin.
         $featured = Machine::query()
             ->active()
-            ->where('is_featured', true)
             ->with(['category', 'images'])
             ->ordered()
             ->take(6)
             ->get();
-
-        if ($featured->isEmpty()) {
-            $featured = Machine::query()
-                ->active()
-                ->with(['category', 'images'])
-                ->latest()
-                ->take(6)
-                ->get();
-        }
 
         $catalogs = Catalog::query()
             ->active()

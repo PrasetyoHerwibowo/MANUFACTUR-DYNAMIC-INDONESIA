@@ -8,18 +8,18 @@
     ];
 @endphp
 
-<header class="sticky top-0 z-40 border-b border-stone-200/80 bg-white/95 backdrop-blur">
+<header class="sticky top-0 z-40 border-b border-stone-200/80 bg-white/95 backdrop-blur transition-colors duration-300 dark:border-gray-800 dark:bg-gray-900/95">
     <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6 lg:px-8">
         <a href="{{ route('home') }}" class="flex items-center gap-3">
             @if ($company->logoUrl())
                 <img src="{{ $company->logoUrl() }}" alt="Logo {{ $company->name }}" class="h-11 w-11 rounded-xl object-contain">
             @else
-                <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-700 text-lg font-extrabold text-white">MD</span>
+                <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-coffee-500 to-coffee-700 text-lg font-extrabold text-white shadow-lg shadow-coffee-900/20">MD</span>
             @endif
 
             <span class="leading-tight">
-                <span class="block text-sm font-extrabold tracking-tight text-brand-900 sm:text-base">{{ $company->name }}</span>
-                <span class="hidden text-[11px] font-medium text-stone-500 sm:block">Mesin Pengolahan Kopi &amp; Kakao</span>
+                <span class="block text-sm font-extrabold tracking-tight text-brand-900 dark:text-white sm:text-base">{{ $company->name }}</span>
+                <span class="hidden text-[11px] font-medium text-stone-500 dark:text-gray-400 sm:block">Mesin Pengolahan Kopi &amp; Kakao</span>
             </span>
         </a>
 
@@ -27,44 +27,56 @@
             @foreach ($menu as $item)
                 @php $active = request()->routeIs($item['route']) || request()->routeIs($item['route'].'.*'); @endphp
                 <a href="{{ route($item['route']) }}"
-                   class="rounded-lg px-3.5 py-2 text-sm font-semibold transition {{ $active ? 'bg-brand-50 text-brand-700' : 'text-stone-600 hover:bg-stone-100 hover:text-brand-700' }}">
+                   class="rounded-lg px-3.5 py-2 text-sm font-semibold transition {{ $active ? 'bg-coffee-50 text-coffee-700 dark:bg-coffee-500/10 dark:text-coffee-400' : 'text-stone-600 hover:bg-stone-100 hover:text-coffee-700 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-coffee-400' }}">
                     {{ $item['label'] }}
                 </a>
             @endforeach
 
             @auth
-                <a href="{{ route('admin.dashboard') }}" class="ml-2 rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-800">
-                    Panel Admin
+                <a href="{{ route('admin.dashboard') }}" class="ml-2 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-coffee-600 to-coffee-700 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-coffee-900/20 transition hover:from-coffee-700 hover:to-coffee-800">
+                    <i class="ti ti-layout-dashboard text-base"></i> Panel Admin
                 </a>
             @else
-                <a href="{{ route('admin.login') }}" class="ml-2 rounded-lg border border-brand-200 px-4 py-2 text-sm font-semibold text-brand-700 transition hover:bg-brand-50">
-                    Login Admin
+                <a href="{{ route('admin.login') }}" class="ml-2 inline-flex items-center gap-2 rounded-lg border border-coffee-200 px-4 py-2 text-sm font-semibold text-coffee-700 transition hover:bg-coffee-50 dark:border-coffee-700/50 dark:text-coffee-400 dark:hover:bg-coffee-500/10">
+                    <i class="ti ti-lock text-base"></i> Login Admin
                 </a>
             @endauth
         </nav>
 
-        <button type="button" data-menu-toggle="#menu-mobile"
-                class="inline-flex items-center justify-center rounded-lg border border-stone-300 p-2 text-stone-600 lg:hidden"
-                aria-label="Buka menu">
-            <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
-            </svg>
-        </button>
+        <div class="flex items-center gap-2">
+            {{-- Tombol ganti tema terang / gelap. --}}
+            <button type="button" data-theme-toggle
+                    class="relative h-6 w-12 shrink-0 rounded-full bg-stone-200 transition-colors duration-300 dark:bg-gray-700"
+                    title="Ganti tema terang / gelap" aria-label="Ganti tema terang / gelap">
+                <span data-theme-knob
+                      class="absolute left-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-md transition-transform duration-300">
+                    <i data-theme-icon class="ti ti-moon text-[11px] text-gray-600"></i>
+                </span>
+            </button>
+
+            <button type="button" data-menu-toggle="#menu-mobile"
+                    class="inline-flex items-center justify-center rounded-lg border border-stone-300 p-2 text-stone-600 transition hover:bg-stone-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 lg:hidden"
+                    aria-label="Buka menu">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
+                </svg>
+            </button>
+        </div>
     </div>
 
-    <div id="menu-mobile" class="hidden border-t border-stone-200 bg-white px-4 py-3 lg:hidden">
+    <div id="menu-mobile" class="hidden border-t border-stone-200 bg-white px-4 py-3 transition-colors duration-300 dark:border-gray-800 dark:bg-gray-900 lg:hidden">
         <nav class="flex flex-col gap-1">
             @foreach ($menu as $item)
                 <a href="{{ route($item['route']) }}"
-                   class="rounded-lg px-3 py-2.5 text-sm font-semibold {{ request()->routeIs($item['route'].'*') ? 'bg-brand-50 text-brand-700' : 'text-stone-600' }}">
+                   class="rounded-lg px-3 py-2.5 text-sm font-semibold {{ request()->routeIs($item['route'].'*') ? 'bg-coffee-50 text-coffee-700 dark:bg-coffee-500/10 dark:text-coffee-400' : 'text-stone-600 dark:text-gray-300' }}">
                     {{ $item['label'] }}
                 </a>
             @endforeach
 
             @auth
-                <a href="{{ route('admin.dashboard') }}" class="mt-1 rounded-lg bg-brand-700 px-3 py-2.5 text-sm font-semibold text-white">Panel Admin</a>
+                <a href="{{ route('admin.dashboard') }}" class="mt-1 rounded-lg bg-gradient-to-r from-coffee-600 to-coffee-700 px-3 py-2.5 text-sm font-semibold text-white">Panel Admin</a>
             @else
-                <a href="{{ route('admin.login') }}" class="mt-1 rounded-lg border border-brand-200 px-3 py-2.5 text-sm font-semibold text-brand-700">Login Admin</a>
+                <a href="{{ route('admin.login') }}" class="mt-1 rounded-lg border border-coffee-200 px-3 py-2.5 text-sm font-semibold text-coffee-700 dark:border-coffee-700/50 dark:text-coffee-400">Login Admin</a>
             @endauth
         </nav>
     </div>

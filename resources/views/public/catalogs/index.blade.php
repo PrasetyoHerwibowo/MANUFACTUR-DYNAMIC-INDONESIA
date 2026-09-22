@@ -22,12 +22,12 @@
                 {{ $catalogs->links() }}
             </div>
         @else
-            <div class="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-6 py-16 text-center">
-                <p class="text-lg font-bold text-stone-700">Belum ada katalog</p>
-                <p class="mt-2 text-sm text-stone-500">
+            <div class="rounded-2xl border border-dashed border-stone-300 dark:border-gray-600 bg-stone-50 dark:bg-gray-800/40 px-6 py-16 text-center">
+                <p class="text-lg font-bold text-stone-700 dark:text-gray-200">Belum ada katalog</p>
+                <p class="mt-2 text-sm text-stone-500 dark:text-gray-400">
                     Katalog produk sedang kami siapkan. Silakan hubungi kami untuk informasi produk terbaru.
                 </p>
-                <a href="{{ route('contact') }}" class="mt-6 inline-block rounded-xl bg-brand-700 px-5 py-2.5 text-sm font-bold text-white">
+                <a href="{{ route('contact') }}" class="mt-6 inline-block rounded-xl bg-gradient-to-r from-coffee-600 to-coffee-700 px-5 py-2.5 text-sm font-bold text-white">
                     Hubungi Kami
                 </a>
             </div>

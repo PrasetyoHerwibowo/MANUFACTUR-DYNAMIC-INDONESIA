@@ -6,8 +6,10 @@ use App\Http\Controllers\Admin\CatalogController as AdminCatalogController;
 use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
 use App\Http\Controllers\Admin\CompanyProfileController;
 use App\Http\Controllers\Admin\ContactMessageController;
+use App\Http\Controllers\Admin\CustomerController as AdminCustomerController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\MachineController as AdminMachineController;
+use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PageController;
@@ -52,14 +54,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->except('show')
             ->parameters(['categories' => 'category']);
 
-        // Model mesin (fungsi mesin, spesifikasi, galeri foto)
+        // Model mesin (fungsi mesin dan spesifikasi)
         Route::resource('machines', AdminMachineController::class)
             ->except('show')
             ->parameters(['machines' => 'machine']);
-        Route::put('machines/{machine}/images/{image}', [AdminMachineController::class, 'updateImage'])
-            ->name('machines.images.update');
-        Route::delete('machines/{machine}/images/{image}', [AdminMachineController::class, 'destroyImage'])
-            ->name('machines.images.destroy');
 
         // Katalog + foto halaman katalog
         Route::resource('catalogs', AdminCatalogController::class)
@@ -78,6 +76,34 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('pesan', [ContactMessageController::class, 'index'])->name('messages.index');
         Route::get('pesan/{message}', [ContactMessageController::class, 'show'])->name('messages.show');
         Route::delete('pesan/{message}', [ContactMessageController::class, 'destroy'])->name('messages.destroy');
+
+        // Pesanan + pembayaran (ditampilkan dalam satu daftar)
+        Route::get('pesanan', [AdminOrderController::class, 'index'])->name('orders.index');
+        Route::get('pesanan/tambah', [AdminOrderController::class, 'create'])->name('orders.create');
+        Route::post('pesanan', [AdminOrderController::class, 'store'])->name('orders.store');
+        Route::get('pesanan/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
+        Route::delete('pesanan/{order}', [AdminOrderController::class, 'destroy'])->name('orders.destroy');
+        Route::post('pesanan/{order}/pembayaran-baru', [AdminOrderController::class, 'renewPayment'])
+            ->name('orders.payments.renew');
+
+        // Pembayaran: verifikasi lunas, tandai gagal, dan ubah batas waktu
+        Route::put('pembayaran/{payment}/lunas', [AdminOrderController::class, 'verifyPayment'])
+            ->name('payments.verify');
+        Route::put('pembayaran/{payment}/gagal', [AdminOrderController::class, 'failPayment'])
+            ->name('payments.fail');
+        Route::put('pembayaran/{payment}/batas-waktu', [AdminOrderController::class, 'updateDeadline'])
+            ->name('payments.deadline');
+
+        // Pelanggan terdaftar
+        Route::get('pelanggan', [AdminCustomerController::class, 'index'])->name('customers.index');
+        Route::get('pelanggan/tambah', [AdminCustomerController::class, 'create'])->name('customers.create');
+        Route::post('pelanggan', [AdminCustomerController::class, 'store'])->name('customers.store');
+        Route::get('pelanggan/{customer}', [AdminCustomerController::class, 'show'])->name('customers.show');
+        Route::get('pelanggan/{customer}/ubah', [AdminCustomerController::class, 'edit'])->name('customers.edit');
+        Route::put('pelanggan/{customer}', [AdminCustomerController::class, 'update'])->name('customers.update');
+        Route::put('pelanggan/{customer}/status', [AdminCustomerController::class, 'toggleStatus'])
+            ->name('customers.toggle');
+        Route::delete('pelanggan/{customer}', [AdminCustomerController::class, 'destroy'])->name('customers.destroy');
 
         // Akun admin
         Route::get('akun', [AccountController::class, 'edit'])->name('account.edit');

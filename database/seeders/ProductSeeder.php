@@ -81,7 +81,7 @@ class ProductSeeder extends Seeder
                 ],
             ],
             [
-                'slug' => 'mesin-sangrai-dan-penepung',
+                'slug' => 'mesin-sangrai-penepung',
                 'name' => 'Mesin Sangrai & Penepung',
                 'tagline' => 'Penentu cita rasa dan kehalusan produk',
                 'description' => 'Mesin roaster dan grinder untuk menghasilkan kopi sangrai serta bubuk kopi/kakao dengan tingkat kematangan dan kehalusan yang konsisten.',

@@ -1,4 +1,5 @@
 import './bootstrap';
+import { initInputFilters } from './input-filter';
 
 /**
  * Pratinjau foto sebelum diunggah admin.
@@ -42,4 +43,10 @@ document.addEventListener('submit', (event) => {
         event.preventDefault();
     }
 });
+
+/**
+ * Tolak karakter yang tidak diperbolehkan langsung saat diketik, sehingga
+ * kolom hanya berisi karakter yang sah (lihat resources/js/input-filter.js).
+ */
+initInputFilters();
 
