@@ -12,7 +12,7 @@
     <section class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
         <div class="grid gap-12 lg:grid-cols-2 lg:items-start">
             <div>
-                <span class="text-xs font-bold uppercase tracking-[0.2em] text-coffee-500 dark:text-coffee-400">Profil Perusahaan</span>
+                <span class="text-xs font-bold uppercase tracking-[0.2em] text-red-500 dark:text-red-400">Profil Perusahaan</span>
                 <h2 class="mt-3 text-2xl font-extrabold tracking-tight text-stone-900 dark:text-white sm:text-3xl">
                     {{ $company->name }}
                 </h2>
@@ -74,7 +74,7 @@
                         <ul class="mt-4 space-y-3 text-sm leading-relaxed text-stone-600 dark:text-gray-300">
                             @foreach ($company->missionList() as $mission)
                                 <li class="flex gap-3">
-                                    <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-100 text-[11px] font-black text-accent-700 dark:bg-accent-700/15 dark:text-accent-300">✓</span>
+                                    <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-100 text-[11px] font-black text-red-700 dark:bg-red-700/15 dark:text-red-300">✓</span>
                                     <span>{{ $mission }}</span>
                                 </li>
                             @endforeach
@@ -92,7 +92,7 @@
             <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 @foreach ($categories as $category)
                     <a href="{{ route('products.index', ['kategori' => $category->slug]) }}"
-                       class="rounded-xl border border-stone-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 transition hover:border-coffee-300 dark:hover:border-coffee-700 hover:shadow-md">
+                       class="rounded-xl border border-stone-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 transition hover:border-red-300 dark:hover:border-red-700 hover:shadow-md">
                         <p class="text-sm font-bold text-stone-800 dark:text-white">{{ $category->name }}</p>
                         <p class="mt-1 text-xs text-stone-500 dark:text-gray-400">{{ $category->machines_count }} model mesin</p>
                     </a>
@@ -102,12 +102,12 @@
     @endif
 
     <section class="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
-        <div class="rounded-3xl bg-gradient-to-br from-coffee-800 to-coffee-600 px-6 py-12 text-center sm:px-12">
+        <div class="rounded-3xl bg-gradient-to-br from-red-800 to-red-600 px-6 py-12 text-center sm:px-12">
             <h2 class="text-2xl font-extrabold text-white">Ingin bekerja sama dengan kami?</h2>
-            <p class="mx-auto mt-3 max-w-2xl text-sm text-coffee-50">
+            <p class="mx-auto mt-3 max-w-2xl text-sm text-red-50">
                 Kirimkan kebutuhan mesin Anda, tim kami akan membantu memilih spesifikasi yang paling sesuai.
             </p>
-            <a href="{{ route('contact') }}" class="mt-7 inline-block rounded-xl bg-white dark:bg-gray-800 px-6 py-3 text-sm font-bold text-coffee-800 dark:text-coffee-300 transition hover:bg-coffee-50 dark:hover:bg-coffee-500/10">
+            <a href="{{ route('contact') }}" class="mt-7 inline-block rounded-xl bg-white dark:bg-gray-800 px-6 py-3 text-sm font-bold text-red-800 dark:text-red-300 transition hover:bg-red-50 dark:hover:bg-red-500/10">
                 Hubungi Kami Sekarang
             </a>
         </div>

@@ -70,7 +70,7 @@
 
                     @if ($catalog->pdf_file)
                         <a href="{{ \App\Support\ImageUploader::url($catalog->pdf_file) }}" target="_blank" rel="noopener"
-                           class="mt-6 block rounded-xl bg-gradient-to-r from-coffee-600 to-coffee-700 px-5 py-3 text-center text-sm font-bold text-white transition hover:from-coffee-700 hover:to-coffee-800">
+                           class="mt-6 block rounded-xl bg-gradient-to-r from-red-600 to-red-700 px-5 py-3 text-center text-sm font-bold text-white transition hover:from-red-700 hover:to-red-800">
                             Unduh Katalog (PDF)
                         </a>
                     @endif
@@ -83,7 +83,7 @@
 
                 <div class="rounded-2xl border border-stone-200 dark:border-gray-700 bg-stone-50 dark:bg-gray-800/40 p-6">
                     <p class="text-xs font-bold uppercase tracking-wide text-stone-400 dark:text-gray-500">Katalog lainnya</p>
-                    <a href="{{ route('catalogs.index') }}" class="mt-3 inline-block text-sm font-bold text-coffee-700 dark:text-coffee-400">
+                    <a href="{{ route('catalogs.index') }}" class="mt-3 inline-block text-sm font-bold text-red-700 dark:text-red-400">
                         Lihat semua katalog &rarr;
                     </a>
                 </div>

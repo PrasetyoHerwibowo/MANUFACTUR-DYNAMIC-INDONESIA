@@ -18,13 +18,13 @@
                 <label for="q" class="mb-1.5 block text-sm font-semibold text-stone-700 dark:text-gray-200">Cari mesin</label>
                 <input type="text" name="q" id="q" value="{{ request('q') }}"
                        placeholder="Nama mesin, kode model, atau fungsi..."
-                       class="w-full rounded-xl border border-stone-300 bg-white dark:border-gray-600 dark:bg-gray-900 px-3.5 py-2.5 text-sm text-stone-800 dark:text-white shadow-sm outline-none focus:border-coffee-500 dark:focus:border-coffee-400 focus:ring-2 focus:ring-coffee-200 dark:focus:ring-coffee-900/40">
+                       class="w-full rounded-xl border border-stone-300 bg-white dark:border-gray-600 dark:bg-gray-900 px-3.5 py-2.5 text-sm text-stone-800 dark:text-white shadow-sm outline-none focus:border-red-500 dark:focus:border-red-400 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-900/40">
             </div>
 
             <div>
                 <label for="kategori" class="mb-1.5 block text-sm font-semibold text-stone-700 dark:text-gray-200">Jenis mesin</label>
                 <select name="kategori" id="kategori"
-                        class="w-full rounded-xl border border-stone-300 bg-white dark:border-gray-600 dark:bg-gray-900 px-3.5 py-2.5 text-sm text-stone-800 dark:text-white shadow-sm outline-none focus:border-coffee-500 dark:focus:border-coffee-400 focus:ring-2 focus:ring-coffee-200 dark:focus:ring-coffee-900/40">
+                        class="w-full rounded-xl border border-stone-300 bg-white dark:border-gray-600 dark:bg-gray-900 px-3.5 py-2.5 text-sm text-stone-800 dark:text-white shadow-sm outline-none focus:border-red-500 dark:focus:border-red-400 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-900/40">
                     <option value="">Semua jenis mesin</option>
                     @foreach ($categories as $category)
                         <option value="{{ $category->slug }}" @selected(request('kategori') === $category->slug)>
@@ -36,7 +36,7 @@
 
             <div class="flex items-end gap-2">
                 <button type="submit"
-                        class="flex-1 rounded-xl bg-gradient-to-r from-coffee-600 to-coffee-700 px-5 py-2.5 text-sm font-bold text-white transition hover:from-coffee-700 hover:to-coffee-800">
+                        class="flex-1 rounded-xl bg-gradient-to-r from-red-600 to-red-700 px-5 py-2.5 text-sm font-bold text-white transition hover:from-red-700 hover:to-red-800">
                     Terapkan
                 </button>
                 @if (request()->filled('q') || request()->filled('kategori'))
@@ -53,7 +53,7 @@
                 Menampilkan <span class="font-bold text-stone-700 dark:text-gray-200">{{ $machines->count() }}</span> dari
                 <span class="font-bold text-stone-700 dark:text-gray-200">{{ $machines->total() }}</span> model mesin
                 @if ($activeCategory)
-                    pada kategori <span class="font-bold text-coffee-700 dark:text-coffee-400">{{ $activeCategory->name }}</span>
+                    pada kategori <span class="font-bold text-red-700 dark:text-red-400">{{ $activeCategory->name }}</span>
                 @endif
             </p>
 
@@ -78,7 +78,7 @@
                 <p class="mt-2 text-sm text-stone-500 dark:text-gray-400">
                     Coba ubah kata kunci pencarian atau pilih jenis mesin lain.
                 </p>
-                <a href="{{ route('products.index') }}" class="mt-6 inline-block rounded-xl bg-gradient-to-r from-coffee-600 to-coffee-700 px-5 py-2.5 text-sm font-bold text-white">
+                <a href="{{ route('products.index') }}" class="mt-6 inline-block rounded-xl bg-gradient-to-r from-red-600 to-red-700 px-5 py-2.5 text-sm font-bold text-white">
                     Lihat semua mesin
                 </a>
             </div>

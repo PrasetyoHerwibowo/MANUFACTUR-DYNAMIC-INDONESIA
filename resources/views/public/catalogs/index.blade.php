@@ -27,7 +27,7 @@
                 <p class="mt-2 text-sm text-stone-500 dark:text-gray-400">
                     Katalog produk sedang kami siapkan. Silakan hubungi kami untuk informasi produk terbaru.
                 </p>
-                <a href="{{ route('contact') }}" class="mt-6 inline-block rounded-xl bg-gradient-to-r from-coffee-600 to-coffee-700 px-5 py-2.5 text-sm font-bold text-white">
+                <a href="{{ route('contact') }}" class="mt-6 inline-block rounded-xl bg-gradient-to-r from-red-600 to-red-700 px-5 py-2.5 text-sm font-bold text-white">
                     Hubungi Kami
                 </a>
             </div>

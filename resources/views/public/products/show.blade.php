@@ -41,7 +41,7 @@
                 <div class="rounded-2xl border border-stone-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm">
                     @if ($machine->category)
                         <a href="{{ route('products.index', ['kategori' => $machine->category->slug]) }}"
-                           class="inline-block rounded-full bg-coffee-50 dark:bg-coffee-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-coffee-700 dark:text-coffee-400">
+                           class="inline-block rounded-full bg-red-50 dark:bg-red-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-red-700 dark:text-red-400">
                             {{ $machine->category->name }}
                         </a>
                     @endif
@@ -50,7 +50,7 @@
 
                     @if ($machine->model_code)
                         <p class="mt-1 text-sm font-semibold text-stone-500 dark:text-gray-400">
-                            Kode model: <span class="text-coffee-700 dark:text-coffee-400">{{ $machine->model_code }}</span>
+                            Kode model: <span class="text-red-700 dark:text-red-400">{{ $machine->model_code }}</span>
                         </p>
                     @endif
 
@@ -80,7 +80,7 @@
 
                     <div class="mt-6 space-y-2.5">
                         <a href="{{ route('contact', ['mesin' => $machine->slug]) }}"
-                           class="block rounded-xl bg-gradient-to-r from-coffee-600 to-coffee-700 px-5 py-3 text-center text-sm font-bold text-white transition hover:from-coffee-700 hover:to-coffee-800">
+                           class="block rounded-xl bg-gradient-to-r from-red-600 to-red-700 px-5 py-3 text-center text-sm font-bold text-white transition hover:from-red-700 hover:to-red-800">
                             Minta Penawaran
                         </a>
 
@@ -88,7 +88,7 @@
                         @if ($wa)
                             <a href="https://wa.me/{{ $wa }}?text={{ urlencode('Halo, saya ingin bertanya tentang mesin '.$machine->name) }}"
                                target="_blank" rel="noopener"
-                               class="block rounded-xl border border-accent-300 bg-accent-100 px-5 py-3 text-center text-sm font-bold text-accent-700 transition hover:bg-accent-300/60 dark:border-accent-700/50 dark:bg-accent-700/15 dark:text-accent-300 dark:hover:bg-accent-700/25">
+                               class="block rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-center text-sm font-bold text-red-700 transition hover:bg-red-200/60 dark:border-red-700/50 dark:bg-red-700/15 dark:text-red-300 dark:hover:bg-red-700/25">
                                 Tanya via WhatsApp
                             </a>
                         @endif
@@ -100,7 +100,7 @@
                     <p class="mt-2 text-sm leading-relaxed text-stone-600 dark:text-gray-300">
                         Kami dapat menyesuaikan dimensi, kapasitas, dan material mesin sesuai kebutuhan lini produksi Anda.
                     </p>
-                    <a href="{{ route('products.index') }}" class="mt-3 inline-block text-sm font-bold text-coffee-700 dark:text-coffee-400">
+                    <a href="{{ route('products.index') }}" class="mt-3 inline-block text-sm font-bold text-red-700 dark:text-red-400">
                         Lihat semua model &rarr;
                     </a>
                 </div>
