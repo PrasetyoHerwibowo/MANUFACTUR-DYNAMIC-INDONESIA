@@ -5,10 +5,11 @@
 @section('page_subtitle', 'Pesan dari formulir kontak pengunjung website')
 
 @section('content')
-    <div class="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+    <div class="mt-5 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-stone-200 text-sm">
-                <thead class="bg-stone-50 text-left text-xs font-bold uppercase tracking-wide text-stone-500">
+            <table class="min-w-full divide-y divide-stone-200 text-sm dark:divide-gray-700">
+                <thead
+                    class="border-bg-stone-50 text-left text-xs font-bold uppercase tracking-wide text-stone-500 dark:bg-gray-700/50 dark:text-gray-400">
                     <tr>
                         <th class="px-5 py-3.5">Pengirim</th>
                         <th class="px-5 py-3.5">Kontak</th>
@@ -19,7 +20,7 @@
                     </tr>
                 </thead>
 
-                <tbody class="divide-y divide-stone-100">
+                <tbody class="divide-y divide-stone-100 dark:divide-gray-700">
                     @forelse ($messages as $message)
                         <tr>
                             <td class="px-5 py-3">
