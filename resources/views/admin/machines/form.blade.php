@@ -18,8 +18,8 @@
             @endif
 
             {{-- Data utama --}}
-            <div class="space-y-5 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-7">
-                <h2 class="text-base font-extrabold text-stone-900">Data utama</h2>
+            <div class="space-y-5 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-7 dark:border-slate-700 dark:bg-slate-900">
+                <h2 class="text-base font-extrabold text-stone-900 dark:text-white">Data utama</h2>
 
                 <x-admin.select name="category_id" label="Jenis mesin" :options="$categories->pluck('name', 'id')"
                                 :selected="$machine->category_id" placeholder="— Pilih jenis mesin —" required />
@@ -46,8 +46,8 @@
             </div>
 
             {{-- Spesifikasi --}}
-            <div class="space-y-5 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-7">
-                <h2 class="text-base font-extrabold text-stone-900">Spesifikasi &amp; deskripsi lengkap</h2>
+            <div class="space-y-5 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-7 dark:border-slate-700 dark:bg-slate-900">
+                <h2 class="text-base font-extrabold text-stone-900 dark:text-white">Spesifikasi &amp; deskripsi lengkap</h2>
 
                 <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                     <x-admin.input name="capacity" label="Kapasitas" :value="$machine->capacity" maxlength="20"
@@ -76,8 +76,8 @@
             </div>
 
             {{-- Foto utama --}}
-            <div class="space-y-5 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-7">
-                <h2 class="text-base font-extrabold text-stone-900">Foto mesin</h2>
+            <div class="space-y-5 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-7  dark:border-slate-700 dark:bg-slate-900">
+                <h2 class="text-base font-extrabold text-stone-900 dark:text-white">Foto mesin</h2>
 
                 <x-admin.file name="main_image" label="Foto utama mesin" :current="$machine->mainImageUrl()"
                               hint="Format JPG, PNG, atau WEBP. Maksimal 6 MB. Disarankan rasio 4:3." />
@@ -94,7 +94,7 @@
                 </button>
 
                 <a href="{{ route('admin.machines.index') }}"
-                   class="rounded-xl border border-stone-300 px-5 py-2.5 text-sm font-bold text-stone-600 transition hover:bg-white">
+                   class="rounded-xl border border-stone-300 px-5 py-2.5 text-sm font-bold text-stone-600 transition hover:bg-stone-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700">
                     Batal
                 </a>
 

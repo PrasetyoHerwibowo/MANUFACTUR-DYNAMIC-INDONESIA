@@ -10,14 +10,14 @@
     <div class="max-w-3xl">
         <form method="POST"
               action="{{ $isEdit ? route('admin.categories.update', $category) : route('admin.categories.store') }}"
-              class="space-y-5 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-7">
-            @csrf
+            class="space-y-5 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-7 dark:border-slate-700 dark:bg-slate-900"
+              @csrf
             @if ($isEdit)
                 @method('PUT')
             @endif
 
             <x-admin.input
-                name="name"
+            name="name"
                 label="Nama jenis mesin"
                 :value="$category->name"
                 required
@@ -51,14 +51,14 @@
                 data-input-filter="text"
             />
 
-            <div class="flex flex-wrap items-center gap-3 border-t border-stone-200 pt-5">
+            <div class="flex flex-wrap items-center gap-3 border-t border-stone-200 pt-5 dark:border-slate-700">
                 <button type="submit"
                         class="rounded-xl bg-brand-700 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-brand-800">
                     {{ $isEdit ? 'Simpan Perubahan' : 'Simpan Jenis Mesin' }}
                 </button>
 
                 <a href="{{ route('admin.categories.index') }}"
-                   class="rounded-xl border border-stone-300 px-5 py-2.5 text-sm font-bold text-stone-600 transition hover:bg-stone-50">
+                class="rounded-xl border border-stone-300 px-5 py-2.5 text-sm font-bold text-stone-600 transition hover:bg-stone-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700">
                     Batal
                 </a>
 
