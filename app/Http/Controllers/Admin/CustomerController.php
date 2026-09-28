@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreCustomerRequest;
+use App\Http\Requests\Admin\UpdateCustomerRequest;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Payment;
@@ -10,7 +12,6 @@ use App\Support\Reference;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 /**
  * Pelanggan yang terdaftar beserta riwayat pesanannya.
@@ -94,9 +95,9 @@ class CustomerController extends Controller
     /**
      * Tambah pelanggan baru.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(StoreCustomerRequest $request): RedirectResponse
     {
-        $validated = $this->validated($request);
+        $validated = $request->validated();
         $validated['customer_code'] = Reference::make(Reference::CUSTOMER, Customer::class, 'customer_code');
 
         $customer = Customer::query()->create($validated);
@@ -109,9 +110,9 @@ class CustomerController extends Controller
     /**
      * Perbarui data pelanggan.
      */
-    public function update(Request $request, Customer $customer): RedirectResponse
+    public function update(UpdateCustomerRequest $request, Customer $customer): RedirectResponse
     {
-        $customer->update($this->validated($request, $customer));
+        $customer->update($request->validated());
 
         return redirect()
             ->route('admin.customers.show', $customer)
@@ -148,39 +149,5 @@ class CustomerController extends Controller
         return redirect()
             ->route('admin.customers.index')
             ->with('success', 'Pelanggan '.$customer->name.' berhasil dihapus.');
-    }
-
-    /**
-     * Validasi data pelanggan (dipakai saat tambah & ubah).
-     *
-     * @return array<string, mixed>
-     */
-    private function validated(Request $request, ?Customer $customer = null): array
-    {
-        return $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => [
-                'required', 'string', 'email', 'max:255',
-                Rule::unique('customers', 'email')->ignore($customer?->id),
-            ],
-            'phone' => ['nullable', 'string', 'max:30'],
-            'company' => ['nullable', 'string', 'max:255'],
-            'address' => ['nullable', 'string', 'max:1000'],
-            'city' => ['nullable', 'string', 'max:100'],
-            'province' => ['nullable', 'string', 'max:100'],
-            'postal_code' => ['nullable', 'string', 'max:10'],
-            'notes' => ['nullable', 'string', 'max:1000'],
-            'is_active' => ['required', 'boolean'],
-        ], [], [
-            'name' => 'nama pelanggan',
-            'email' => 'email',
-            'phone' => 'nomor telepon',
-            'company' => 'perusahaan',
-            'address' => 'alamat',
-            'city' => 'kota',
-            'province' => 'provinsi',
-            'postal_code' => 'kode pos',
-            'notes' => 'catatan',
-        ]);
     }
 }

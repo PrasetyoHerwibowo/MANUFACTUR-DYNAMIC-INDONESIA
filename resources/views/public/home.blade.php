@@ -190,8 +190,7 @@ html:not(.dark) .hero-bottom-fade {
                         </p>
                     </div>
 
-                    <a href="{{ route('products.inde
-                    x') }}"
+                    <a href="{{ route('products.index') }}"
                         class="inline-flex items-center gap-2 text-sm font-bold text-red-600 transition hover:text-red-700 dark:text-red-400">
                         Lihat semua model <i class="ti ti-arrow-right text-sm"></i>
                     </a>

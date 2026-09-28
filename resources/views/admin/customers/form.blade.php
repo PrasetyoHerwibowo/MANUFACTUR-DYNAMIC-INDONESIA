@@ -1,6 +1,15 @@
 @extends('layouts.admin')
 
-@php $isEdit = $customer->exists; @endphp
+@php
+    $isEdit = $customer->exists;
+
+    /**
+     * Batas panjang kolom taken dari CustomerRequest::LENGTHS, bukan ditulis
+     * ulang di sini, sehingga atribut maxlength selalu sama dengan aturan
+     * validasi sisi server.
+     */
+    $max = \App\Http\Requests\Admin\CustomerRequest::LENGTHS;
+@endphp
 
 @section('title', $isEdit ? 'Ubah Pelanggan' : 'Tambah Pelanggan')
 @section('page_title', $isEdit ? 'Ubah Pelanggan' : 'Tambah Pelanggan')
@@ -22,6 +31,13 @@
         </x-alert>
     @endif
 
+    {{--
+        Nilai setiap kolom diambil dari old() lebih dulu (dilakukan oleh
+        komponen x-admin.*), sehingga isian admin tidak hilang saat validasi
+        gagal. Validasi bawaan browser sengaja tetap aktif: atribut maxlength
+        di bawah adalah versi sisi klien dari CustomerRequest::LENGTHS, dan
+        pesan yang lebih rinci tetap datang dari server.
+    --}}
     <form method="POST"
           action="{{ $isEdit ? route('admin.customers.update', $customer) : route('admin.customers.store') }}">
         @csrf
@@ -40,18 +56,45 @@
             </p>
 
             <div class="grid gap-4 md:grid-cols-2">
-                <x-admin.input name="name" label="Nama Pelanggan" :value="$customer->name" required
-                               placeholder="Contoh: Budi Santoso" />
+                <x-admin.input
+                    name="name"
+                    label="Nama Pelanggan"
+                    :value="$customer->name"
+                    :maxlength="$max['name']"
+                    required
+                    autocomplete="name"
+                    placeholder="Contoh: Budi Santoso"
+                    hint="Wajib diisi. Nama + nomor telepon tidak boleh sama dengan pelanggan yang sudah terdaftar." />
 
-                <x-admin.input name="email" label="Email" type="email" :value="$customer->email" required
-                               placeholder="nama@perusahaan.com"
-                               hint="Dipakai untuk pencarian dan identitas pelanggan." />
+                <x-admin.input
+                    name="email"
+                    label="Email"
+                    type="email"
+                    :value="$customer->email"
+                    :maxlength="$max['email']"
+                    required
+                    autocomplete="email"
+                    placeholder="nama@perusahaan.com"
+                    hint="Wajib diisi dan harus unik. Dipakai untuk pencarian dan identitas pelanggan." />
 
-                <x-admin.input name="phone" label="Nomor Telepon" :value="$customer->phone"
-                               placeholder="Contoh: 0812-3456-7890" />
+                <x-admin.input
+                    name="phone"
+                    label="Nomor Telepon"
+                    :value="$customer->phone"
+                    :maxlength="$max['phone']"
+                    inputmode="numeric"
+                    autocomplete="tel"
+                    placeholder="Contoh: 0812 3456 7890"
+                    hint="Opsional. Spasi, tanda hubung, dan tanda + otomatis dibuang; hanya angka yang disimpan. Bersama nama, nomor ini mencegah pelanggan ganda." />
 
-                <x-admin.input name="company" label="Perusahaan" :value="$customer->company"
-                               placeholder="Contoh: CV Kopi Nusantara" hint="Opsional." />
+                <x-admin.input
+                    name="company"
+                    label="Perusahaan"
+                    :value="$customer->company"
+                    :maxlength="$max['company']"
+                    autocomplete="organization"
+                    placeholder="Contoh: CV Kopi Nusantara"
+                    hint="Opsional." />
             </div>
         </div>
 
@@ -60,13 +103,39 @@
             <p class="mb-4 text-xs text-gray-500 dark:text-gray-400">Dipakai sebagai alamat pengiriman mesin.</p>
 
             <div class="space-y-4">
-                <x-admin.textarea name="address" label="Alamat Lengkap" :value="$customer->address" :rows="3"
-                                  placeholder="Nama jalan, nomor, RT/RW, kelurahan, kecamatan" />
+                <x-admin.textarea
+                    name="address"
+                    label="Alamat Lengkap"
+                    :value="$customer->address"
+                    :rows="3"
+                    :maxlength="$max['address']"
+                    placeholder="Nama jalan, nomor, RT/RW, kelurahan, kecamatan" />
 
                 <div class="grid gap-4 md:grid-cols-3">
-                    <x-admin.input name="city" label="Kota / Kabupaten" :value="$customer->city" placeholder="Contoh: Bandung" />
-                    <x-admin.input name="province" label="Provinsi" :value="$customer->province" placeholder="Contoh: Jawa Barat" />
-                    <x-admin.input name="postal_code" label="Kode Pos" :value="$customer->postal_code" placeholder="40123" />
+                    <x-admin.input
+                        name="city"
+                        label="Kota / Kabupaten"
+                        :value="$customer->city"
+                        :maxlength="$max['city']"
+                        autocomplete="address-level2"
+                        placeholder="Contoh: Bandung" />
+
+                    <x-admin.input
+                        name="province"
+                        label="Provinsi"
+                        :value="$customer->province"
+                        :maxlength="$max['province']"
+                        autocomplete="address-level1"
+                        placeholder="Contoh: Jawa Barat" />
+
+                    <x-admin.input
+                        name="postal_code"
+                        label="Kode Pos"
+                        :value="$customer->postal_code"
+                        :maxlength="$max['postal_code']"
+                        inputmode="numeric"
+                        autocomplete="postal-code"
+                        placeholder="40123" />
                 </div>
             </div>
         </div>
@@ -78,11 +147,23 @@
             </p>
 
             <div class="space-y-4">
-                <x-admin.textarea name="notes" label="Catatan Internal" :value="$customer->notes" :rows="3"
-                                  placeholder="Contoh: pembayaran selalu melalui transfer bank perusahaan" />
+                <x-admin.textarea
+                    name="notes"
+                    label="Catatan Internal"
+                    :value="$customer->notes"
+                    :rows="3"
+                    :maxlength="$max['notes']"
+                    placeholder="Contoh: pembayaran selalu melalui transfer bank perusahaan" />
 
-                <x-admin.checkbox name="is_active" label="Akun pelanggan aktif" :checked="$customer->is_active"
-                                  hint="Pelanggan nonaktif tidak dipakai pada pesanan baru." />
+                <x-admin.checkbox
+                    name="is_active"
+                    label="Akun pelanggan aktif"
+                    :checked="$customer->is_active"
+                    hint="Pelanggan nonaktif tidak dipakai pada pesanan baru." />
+
+                @error('is_active')
+                    <p class="text-xs font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
             </div>
         </div>
 
