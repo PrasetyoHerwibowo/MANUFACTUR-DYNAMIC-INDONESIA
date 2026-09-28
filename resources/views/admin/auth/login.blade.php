@@ -70,11 +70,7 @@
 
             <!-- Logo & Title Kiri -->
             <div style="position: relative; z-index: 3; display: flex; align-items: center; gap: 12px;">
-                @if ($company->logoUrl())
-                    <img src="{{ asset('images/logo-admin.png') }}" alt="Logo Admin" style="width: 40px; height: 40px; object-fit: contain;">
-                @else
-                    <span style="width: 36px; height: 36px; background-color: #ea580c; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px;">MD</span>
-                @endif
+                <img src="{{ asset('images/logo_eiko.png') }}" alt="{{ $company->name }}" style="height: 38px; width: auto; max-width: 160px; object-fit: contain; filter: brightness(0) invert(1);">
                 <h3 style="font-size: 14px; font-weight: 700; color: #ffffff;">{{ $company->name }}</h3>
             </div>
 
@@ -92,11 +88,7 @@
             
             <!-- Logo Mini -->
             <div>
-                @if ($company->logoUrl())
-                    <img src="{{ $company->logoUrl() }}" alt="Logo" style="width: 36px; height: 36px; object-fit: contain; border-radius: 8px;">
-                @else
-                    <span style="width: 36px; height: 36px; background-color: #f97316; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; color: #ffffff;">MD</span>
-                @endif
+                <img src="{{ asset('images/logo_eiko.png') }}" alt="{{ $company->name }}" style="height: 38px; width: auto; max-width: 160px; object-fit: contain;">
             </div>
 
             <!-- Content Form -->
