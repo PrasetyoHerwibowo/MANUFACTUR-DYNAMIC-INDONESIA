@@ -5,7 +5,7 @@ namespace App\Support;
 use Illuminate\Support\Str;
 
 /**
- * Pembuat slug unik untuk nama kategori, mesin, dan katalog.
+ * Pembuat slug unik untuk nama jenis mesin dan model mesin.
  */
 class Slug
 {

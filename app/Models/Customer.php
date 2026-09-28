@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -22,32 +21,16 @@ class Customer extends Model
         'province',
         'postal_code',
         'notes',
-        'is_active',
         'last_order_at',
     ];
 
     protected $casts = [
-        'is_active' => 'boolean',
         'last_order_at' => 'datetime',
-    ];
-
-    /**
-     * Nilai default form saat menambah pelanggan baru.
-     *
-     * @var array<string, mixed>
-     */
-    protected $attributes = [
-        'is_active' => true,
     ];
 
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
-    }
-
-    public function scopeActive(Builder $query): Builder
-    {
-        return $query->where('is_active', true);
     }
 
     /**

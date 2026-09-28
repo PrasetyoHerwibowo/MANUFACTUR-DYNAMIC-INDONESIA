@@ -18,14 +18,14 @@ class MachineController extends Controller
     private const LENGTHS = [
         'name' => 100,
         'model_code' => 50,
-        'function' => 100,
+        'function' => 375,
         'short_description' => 150,
         'capacity' => 20,
         'power' => 20,
         'dimension' => 20,
         'weight' => 10,
         'material' => 100,
-        'specifications' => 100,
+        'specifications' => 375,
         'description' => 500,
     ];
 

@@ -4,24 +4,39 @@
 @endphp
 
 <div class="item-row grid gap-3 rounded-xl border border-gray-200 bg-gray-50/70 p-3 dark:border-gray-700 dark:bg-gray-900/40 md:grid-cols-12" data-item-row>
-    <div class="md:col-span-5">
+    <div class="md:col-span-6">
         <x-admin.select
             :name="'items['.$index.'][machine_id]'"
             label="Model mesin"
             :options="$machineOptions"
-            placeholder="— Mesin lain / manual —" />
+            placeholder="— Pilih model mesin —"
+            required />
     </div>
 
     <div class="md:col-span-3">
-        <x-admin.input :name="'items['.$index.'][name]'" label="Nama item" required />
+        <x-admin.input
+            :name="'items['.$index.'][unit_price]'"
+            label="Harga satuan"
+            inputmode="numeric"
+            maxlength="9"
+            pattern="[0-9]*"
+            data-input-filter="digits"
+            value="0"
+            hint="Hanya angka, maksimal 9 digit (satuan juta)."
+            required />
     </div>
 
     <div class="md:col-span-2">
-        <x-admin.input :name="'items['.$index.'][unit_price]'" label="Harga satuan" type="number" min="0" step="1000" value="0" required />
-    </div>
-
-    <div class="md:col-span-1">
-        <x-admin.input :name="'items['.$index.'][quantity]'" label="Jumlah" type="number" min="1" value="1" required />
+        <x-admin.input
+            :name="'items['.$index.'][quantity]'"
+            label="Jumlah"
+            inputmode="numeric"
+            maxlength="2"
+            pattern="[0-9]*"
+            data-input-filter="digits"
+            value="1"
+            hint="Hanya angka, maksimal 2 digit."
+            required />
     </div>
 
     <div class="flex items-end md:col-span-1">

@@ -56,8 +56,10 @@
                 <x-admin.input
                     name="notes"
                     label="Catatan Pesanan"
+                    maxlength="250"
+                    data-input-filter="punctuation"
                     placeholder="Contoh: pengiriman ke gudang Surabaya"
-                    hint="Opsional, tampil pada detail pesanan." />
+                    hint="Opsional, tampil pada detail pesanan. Maksimal 250 karakter dan hanya boleh huruf, angka, serta tanda baca." />
             </div>
         </div>
 
@@ -91,26 +93,17 @@
         <div class="glass-card mt-5 rounded-2xl p-5 shadow-lg">
             <h2 class="text-base font-bold text-gray-800 dark:text-white">Pembayaran</h2>
             <p class="mb-4 text-xs text-gray-500 dark:text-gray-400">
-                Kode pembayaran dibuat otomatis. Bila pelanggan melewati batas pembayaran, pembayaran berstatus
-                <strong>Gagal</strong> dan harus diulang dari awal.
+                Kode pembayaran dibuat otomatis dengan batas {{ $windowHours }} jam sejak dibuat. Bila pelanggan
+                melewati batas tersebut, pembayaran berstatus <strong>Gagal</strong> dan harus diulang dari awal.
             </p>
 
-            <div class="grid gap-4 md:grid-cols-2">
-                <x-admin.select
-                    name="method"
-                    label="Metode Pembayaran"
-                    :options="$methodLabels"
-                    placeholder="— Pilih metode —"
-                    required
-                    hint="Cara pelanggan membayar pesanan ini." />
-
-                <x-admin.input
-                    name="payment_deadline"
-                    label="Batas Pembayaran"
-                    type="datetime-local"
-                    :value="$defaultDeadline"
-                    hint="Kosongkan untuk memakai batas standar {{ \App\Models\Order::PAYMENT_WINDOW_HOURS }} jam." />
-            </div>
+            <x-admin.select
+                name="method"
+                label="Metode Pembayaran"
+                :options="$methodLabels"
+                placeholder="— Pilih metode —"
+                required
+                hint="Cara pelanggan membayar pesanan ini." />
         </div>
 
         <div class="mt-5 flex flex-wrap items-center justify-end gap-3">
@@ -131,7 +124,6 @@
             const rows = document.getElementById('itemRows');
             const template = document.getElementById('itemRowTemplate');
             const total = document.getElementById('itemsTotal');
-            const machineNames = @json($machines->pluck('name', 'id'));
 
             if (! rows || ! template) {
                 return;
@@ -161,25 +153,18 @@
             document.getElementById('addItemRow')?.addEventListener('click', () => {
                 rows.insertAdjacentHTML('beforeend', template.innerHTML.replaceAll('__INDEX__', String(nextIndex)));
                 nextIndex++;
-                recalcTotal();
-            });
 
-            // Isi nama item otomatis dari model mesin yang dipilih.
-            rows.addEventListener('change', (event) => {
-                const select = event.target;
+                // Baris baru juga mengikuti aturan karakter (harga & jumlah: angka).
+                const row = rows.lastElementChild;
 
-                if (select instanceof HTMLSelectElement && select.name.endsWith('[machine_id]')) {
-                    const row = select.closest('[data-item-row]');
-                    const nameInput = row?.querySelector('input[name$="[name]"]');
-
-                    if (nameInput && machineNames[select.value]) {
-                        nameInput.value = machineNames[select.value];
-                    }
+                if (row && typeof window.initInputFilters === 'function') {
+                    window.initInputFilters(row);
                 }
 
                 recalcTotal();
             });
 
+            rows.addEventListener('change', recalcTotal);
             rows.addEventListener('input', recalcTotal);
 
             rows.addEventListener('click', (event) => {

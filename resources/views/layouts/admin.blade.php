@@ -12,14 +12,13 @@
             'items' => [
                 ['route' => 'admin.categories.index', 'icon' => 'fas fa-layer-group', 'label' => 'Jenis Mesin', 'match' => 'admin.categories.*'],
                 ['route' => 'admin.machines.index', 'icon' => 'fas fa-cogs', 'label' => 'Model Mesin', 'match' => 'admin.machines.*'],
-                ['route' => 'admin.catalogs.index', 'icon' => 'fas fa-book', 'label' => 'Katalog', 'match' => 'admin.catalogs.*'],
             ],
         ],
         [
             'group' => 'Transaksi',
             'items' => [
-                ['route' => 'admin.orders.index', 'icon' => 'fas fa-file-invoice-dollar', 'label' => 'Pesanan & Pembayaran', 'match' => 'admin.orders.*', 'badge' => 'payments'],
                 ['route' => 'admin.customers.index', 'icon' => 'fas fa-users', 'label' => 'Pelanggan', 'match' => 'admin.customers.*'],
+                ['route' => 'admin.orders.index', 'icon' => 'fas fa-file-invoice-dollar', 'label' => 'Pesanan & Pembayaran', 'match' => 'admin.orders.*', 'badge' => 'payments'],
             ],
         ],
         [

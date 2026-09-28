@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\Customer;
+use App\Support\Regions;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Http\FormRequest;
@@ -16,9 +17,10 @@ use Illuminate\Validation\Rule;
  * 1. Sanitasi (memotong spasi tepi, membersihkan nomor telepon) yang
  *    dijalankan di {@see self::prepareForValidation()} sehingga Aturan
  *    validasi selalu memeriksa nilai yang sudah bersih.
- * 2. Unik komposit "nama + nomor telepon" yang mencegah pelanggan ganda
- *    tercatat pada nama dan nomor telepon yang sama.
+ * 2. Keunikan biodata: nama pelanggan harus unik, dan kombinasi
+ *    nama + nomor telepon yang sama juga ditolak.
  * 3. Unik email, dengan pengecualian record sendiri saat menyunting.
+ * 4. Wilayah (provinsi & kota/kabupaten) wajib dipilih dari daftar resmi.
  *
  * Subclass hanya perlu menyatakan pelanggan mana yang sedang di-edit
  * melalui {@see self::customerId()}.
@@ -26,7 +28,7 @@ use Illuminate\Validation\Rule;
 abstract class CustomerRequest extends FormRequest
 {
     /**
-     * Batas panjang setiap kolom, mengikuti skema tabel "customers".
+     * Batas panjang setiap kolom formulir pelanggan.
      *
      * Dipakai sekaligus sebagai aturan validasi server dan, melalui
      * atribut maxlength pada form Blade, sebagai batas sisi klien —
@@ -35,16 +37,29 @@ abstract class CustomerRequest extends FormRequest
      * @var array<string, int>
      */
     public const LENGTHS = [
-        'name' => 255,
+        'name' => 70,
         'email' => 255,
         'phone' => 30,
-        'company' => 255,
-        'address' => 1000,
+        'company' => 100,
+        'address' => 250,
         'city' => 100,
         'province' => 100,
-        'postal_code' => 10,
+        'postal_code' => 5,
         'notes' => 1000,
     ];
+
+    /**
+     * Nama pelanggan: hanya huruf dan spasi.
+     */
+    private const NAME_PATTERN = '/^[\p{L}][\p{L}\s]*$/u';
+
+    /**
+     * Alamat & perusahaan: huruf, angka, spasi, dan tanda baca.
+     *
+     * Simbol seperti @ # $ % ^ * serta tanda < dan > (pembentuk tag HTML)
+     * tidak diperbolehkan.
+     */
+    private const TEXT_PATTERN = '/^[\p{L}\p{N}\s.,;:!?\'"()\[\]{}_\/+&=|~-]*$/u';
 
     /**
      * Kolom yang isinya dirapikan sebelum divalidasi.
@@ -130,6 +145,8 @@ abstract class CustomerRequest extends FormRequest
                 'required',
                 'string',
                 'max:'.self::LENGTHS['name'],
+                'regex:'.self::NAME_PATTERN,
+                Rule::unique('customers', 'name')->ignore($this->customerId()),
                 $this->nameAndPhoneMustBeUnique(),
             ],
             'email' => [
@@ -144,13 +161,22 @@ abstract class CustomerRequest extends FormRequest
                 'string',
                 'max:'.self::LENGTHS['phone'],
             ],
-            'company' => ['nullable', 'string', 'max:'.self::LENGTHS['company']],
-            'address' => ['nullable', 'string', 'max:'.self::LENGTHS['address']],
-            'city' => ['nullable', 'string', 'max:'.self::LENGTHS['city']],
-            'province' => ['nullable', 'string', 'max:'.self::LENGTHS['province']],
-            'postal_code' => ['nullable', 'string', 'max:'.self::LENGTHS['postal_code']],
+            'company' => [
+                'nullable',
+                'string',
+                'max:'.self::LENGTHS['company'],
+                'regex:'.self::TEXT_PATTERN,
+            ],
+            'address' => [
+                'nullable',
+                'string',
+                'max:'.self::LENGTHS['address'],
+                'regex:'.self::TEXT_PATTERN,
+            ],
+            'province' => ['nullable', 'string', Rule::in($this->allowedProvinces())],
+            'city' => ['nullable', 'string', Rule::in($this->allowedCities())],
+            'postal_code' => ['nullable', 'digits_between:1,'.self::LENGTHS['postal_code']],
             'notes' => ['nullable', 'string', 'max:'.self::LENGTHS['notes']],
-            'is_active' => ['required', 'boolean'],
         ];
     }
 
@@ -171,7 +197,6 @@ abstract class CustomerRequest extends FormRequest
             'province' => 'provinsi',
             'postal_code' => 'kode pos',
             'notes' => 'catatan internal',
-            'is_active' => 'status akun',
         ];
     }
 
@@ -189,6 +214,8 @@ abstract class CustomerRequest extends FormRequest
             'name.required' => 'Nama pelanggan wajib diisi.',
             'name.max' => 'Nama pelanggan maksimal '.self::LENGTHS['name'].' karakter.',
             'name.string' => 'Nama pelanggan harus berupa teks.',
+            'name.regex' => 'Nama pelanggan hanya boleh berisi huruf dan spasi.',
+            'name.unique' => 'Nama pelanggan ini sudah terdaftar. Biodata yang sama tidak boleh diinputkan dua kali.',
             'email.required' => 'Email wajib diisi.',
             'email.email' => 'Format email tidak valid. Contoh: nama@perusahaan.com',
             'email.max' => 'Email maksimal '.self::LENGTHS['email'].' karakter.',
@@ -196,14 +223,66 @@ abstract class CustomerRequest extends FormRequest
             'phone.max' => 'Nomor telepon maksimal '.self::LENGTHS['phone'].' digit.',
             'phone.string' => 'Nomor telepon harus berupa teks.',
             'company.max' => 'Perusahaan maksimal '.self::LENGTHS['company'].' karakter.',
+            'company.regex' => 'Perusahaan hanya boleh berisi huruf, angka, spasi, dan tanda baca. Simbol seperti @ # $ % ^ * tidak diperbolehkan.',
             'address.max' => 'Alamat maksimal '.self::LENGTHS['address'].' karakter.',
-            'city.max' => 'Kota/kabupaten maksimal '.self::LENGTHS['city'].' karakter.',
-            'province.max' => 'Provinsi maksimal '.self::LENGTHS['province'].' karakter.',
-            'postal_code.max' => 'Kode pos maksimal '.self::LENGTHS['postal_code'].' karakter.',
+            'address.regex' => 'Alamat hanya boleh berisi huruf, angka, spasi, dan tanda baca. Simbol seperti @ # $ % ^ * tidak diperbolehkan.',
+            'province.in' => 'Provinsi wajib dipilih dari daftar provinsi yang tersedia.',
+            'city.in' => 'Kota/kabupaten wajib dipilih dari daftar kota/kabupaten pada provinsi yang dipilih.',
+            'postal_code.digits_between' => 'Kode pos hanya boleh berisi angka maksimal '.self::LENGTHS['postal_code'].' digit.',
             'notes.max' => 'Catatan internal maksimal '.self::LENGTHS['notes'].' karakter.',
-            'is_active.required' => 'Status akun pelanggan wajib dipilih.',
-            'is_active.boolean' => 'Status akun pelanggan tidak valid.',
         ];
+    }
+
+    /**
+     * Provinsi yang boleh dipakai.
+     *
+     * Nilai provinsi lama yang belum ada pada daftar resmi tetap diizinkan
+     * saat menyunting data yang sudah ada, sehingga admin tidak terpaksa
+     * mengganti alamat hanya untuk menyimpan perubahan lain.
+     *
+     * @return list<string>
+     */
+    private function allowedProvinces(): array
+    {
+        $provinces = Regions::provinces();
+        $current = $this->currentCustomer();
+
+        if ($current !== null && filled($current->province) && ! in_array($current->province, $provinces, true)) {
+            $provinces[] = $current->province;
+        }
+
+        return $provinces;
+    }
+
+    /**
+     * Kota/kabupaten yang sesuai dengan provinsi yang dikirim formulir.
+     *
+     * @return list<string>
+     */
+    private function allowedCities(): array
+    {
+        $province = (string) $this->input('province', '');
+        $cities = Regions::citiesOf($province);
+        $current = $this->currentCustomer();
+
+        if ($current !== null
+            && $province === (string) $current->province
+            && filled($current->city)
+            && ! in_array($current->city, $cities, true)) {
+            $cities[] = $current->city;
+        }
+
+        return $cities;
+    }
+
+    /**
+     * Pelanggan yang sedang disunting (null saat menambah data baru).
+     */
+    private function currentCustomer(): ?Customer
+    {
+        $customerId = $this->customerId();
+
+        return $customerId === null ? null : Customer::query()->find($customerId);
     }
 
     /**
@@ -277,7 +356,7 @@ abstract class CustomerRequest extends FormRequest
 
             if ($exists) {
                 $fail('Pelanggan dengan nama dan nomor telepon tersebut sudah terdaftar. '
-                    .'Gunakan email yang berbeda bila ini memang pelanggan yang berbeda.');
+                    .'Biodata yang sama tidak boleh diinputkan dua kali.');
             }
         };
     }

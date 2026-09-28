@@ -38,7 +38,8 @@
 
     {{-- Filter & tombol tambah pesanan --}}
     <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <form method="GET" action="{{ route('admin.orders.index') }}" class="flex flex-wrap items-end gap-2">
+        <form method="GET" action="{{ route('admin.orders.index') }}" class="flex flex-wrap items-end gap-2"
+              data-auto-filter>
             <div>
                 <label for="q" class="mb-1 block text-xs font-semibold text-gray-500 dark:text-gray-400">Cari</label>
                 <input type="text" name="q" id="q" value="{{ request('q') }}"
@@ -80,10 +81,6 @@
                        class="rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-sm outline-none focus:border-coffee-500 focus:ring-2 focus:ring-coffee-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
             </div>
 
-            <button type="submit" class="rounded-xl bg-gray-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-gray-700">
-                Filter
-            </button>
-
             @if (request()->filled('q') || request()->filled('status') || request()->filled('metode') || request()->filled('dari') || request()->filled('sampai'))
                 <a href="{{ route('admin.orders.index') }}" class="rounded-xl border border-gray-300 px-4 py-2 text-sm font-bold text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800">
                     Reset
@@ -105,11 +102,12 @@
                         <th class="px-5 py-3.5">Kode Pembayaran</th>
                         <th class="px-5 py-3.5">Kode Pesanan</th>
                         <th class="px-5 py-3.5">Nama Pelanggan</th>
+                        <th class="px-5 py-3.5">Model Mesin</th>
+                        <th class="px-5 py-3.5 text-center">Jumlah</th>
                         <th class="px-5 py-3.5">Total Pembayaran</th>
                         <th class="hidden px-5 py-3.5 md:table-cell">Metode Pembayaran</th>
                         <th class="hidden px-5 py-3.5 lg:table-cell">Tanggal</th>
                         <th class="px-5 py-3.5">Status Pembayaran</th>
-                        <th class="px-5 py-3.5 text-right">Aksi</th>
                     </tr>
                 </thead>
 
@@ -145,6 +143,27 @@
                                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ $order->customer?->email }}</p>
                             </td>
 
+                            <td class="px-5 py-3.5">
+                                @forelse ($order->items as $item)
+                                    <p class="text-xs font-semibold text-gray-800 dark:text-gray-100">
+                                        {{ $item->machineName() }}
+                                        @if ($item->machineCode())
+                                            <span class="font-mono text-[10px] font-normal text-gray-400">{{ $item->machineCode() }}</span>
+                                        @endif
+                                    </p>
+                                @empty
+                                    <span class="text-gray-400">—</span>
+                                @endforelse
+                            </td>
+
+                            <td class="px-5 py-3.5 text-center text-gray-700 dark:text-gray-200">
+                                @forelse ($order->items as $item)
+                                    <span class="block text-xs font-bold">{{ $item->quantity }}</span>
+                                @empty
+                                    <span class="text-gray-400">—</span>
+                                @endforelse
+                            </td>
+
                             <td class="px-5 py-3.5 font-semibold text-gray-800 dark:text-gray-100">
                                 Rp {{ number_format((float) $order->total_amount, 0, ',', '.') }}
                             </td>
@@ -169,46 +188,10 @@
                                     <span class="mt-1 block text-[10px] text-red-500">{{ $payment->failure_reason }}</span>
                                 @endif
                             </td>
-
-                            <td class="px-5 py-3.5">
-                                <div class="flex items-center justify-end gap-2">
-                                    <a href="{{ route('admin.orders.show', $order) }}"
-                                       class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800">
-                                        Detail
-                                    </a>
-
-                                    @if ($payment && $payment->status === \App\Models\Payment::STATUS_MENUNGGU)
-                                        <form method="POST" action="{{ route('admin.payments.verify', $payment) }}"
-                                              data-confirm="Verifikasi pembayaran {{ $payment->payment_code }} sebagai lunas?">
-                                            @csrf
-                                            @method('PUT')
-                                            <button type="submit"
-                                                    class="rounded-lg border border-green-200 px-3 py-1.5 text-xs font-bold text-green-700 transition hover:bg-green-50 dark:border-green-500/40 dark:text-green-300 dark:hover:bg-green-500/10">
-                                                Lunas
-                                            </button>
-                                        </form>
-
-                                        <form method="POST" action="{{ route('admin.payments.fail', $payment) }}"
-                                              data-confirm="Tandai pembayaran {{ $payment->payment_code }} gagal? Pelanggan harus mengulang pembayaran dari awal.">
-                                            @csrf
-                                            @method('PUT')
-                                            <button type="submit"
-                                                    class="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-50 dark:border-red-500/40 dark:text-red-300 dark:hover:bg-red-500/10">
-                                                Gagal
-                                            </button>
-                                        </form>
-                                    @elseif ($status === \App\Models\Order::STATUS_GAGAL)
-                                        <a href="{{ route('admin.orders.show', $order) }}#pembayaran"
-                                           class="rounded-lg border border-coffee-300 px-3 py-1.5 text-xs font-bold text-coffee-700 transition hover:bg-coffee-50 dark:border-coffee-500/40 dark:text-coffee-300 dark:hover:bg-coffee-500/10">
-                                            Bayar Ulang
-                                        </a>
-                                    @endif
-                                </div>
-                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-5 py-12 text-center">
+                            <td colspan="9" class="px-5 py-12 text-center">
                                 <i aria-hidden="true" class="fas fa-file-invoice-dollar mb-3 text-4xl text-gray-300 dark:text-gray-600"></i>
                                 <p class="text-sm font-semibold text-gray-600 dark:text-gray-300">Belum ada pesanan & pembayaran yang sesuai.</p>
                                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -230,7 +213,34 @@
 
     <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
         <i aria-hidden="true" class="fas fa-info-circle mr-1 text-coffee-500"></i>
-        Pembayaran yang melewati batas pembayaran otomatis berstatus <strong>Gagal</strong> dan pelanggan wajib
-        mengulang pembayaran dari awal dengan kode pembayaran baru.
+        Filter langsung diterapkan saat dropdown/ tanggal diubah. Klik kode pesanan pada tabel untuk melihat detail.
+        Pembayaran yang melewati batas {{ \App\Models\Order::PAYMENT_WINDOW_HOURS }} jam otomatis berstatus
+        <strong>Gagal</strong> dan pelanggan wajib mengulang pembayaran dari awal dengan kode pembayaran baru.
     </p>
 @endsection
+
+@push('scripts')
+    <script>
+        (function () {
+            const form = document.querySelector('[data-auto-filter]');
+
+            if (! form) {
+                return;
+            }
+
+            // Dropdown & tanggal langsung dikirim begitu nilainya berubah.
+            form.querySelectorAll('select, input[type="date"]').forEach((field) => {
+                field.addEventListener('change', () => form.submit());
+            });
+
+            // Kolom pencarian dikirim otomatis setelah admin berhenti mengetik.
+            let timer = 0;
+            const search = form.querySelector('input[name="q"]');
+
+            search?.addEventListener('input', () => {
+                window.clearTimeout(timer);
+                timer = window.setTimeout(() => form.submit(), 600);
+            });
+        })();
+    </script>
+@endpush

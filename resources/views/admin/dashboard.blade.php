@@ -10,7 +10,6 @@
 
     $mesinAktifBar = $persen((int) $stats['mesin_aktif'], (int) $stats['mesin']);
     $kategoriAktifBar = $persen((int) $stats['kategori_aktif'], (int) $stats['kategori']);
-    $katalogBar = $persen((int) $stats['katalog_berfoto'], (int) $stats['katalog']);
     $pesanBaruBar = $persen((int) $stats['pesan_baru'], (int) $stats['pesan']);
 
     $pesanTerakhir = $recentMessages->first();
@@ -20,7 +19,6 @@
         ['label' => 'Model mesin aktif', 'value' => (int) $stats['mesin_aktif'], 'total' => (int) $stats['mesin'], 'color' => 'from-blue-500 to-blue-600'],
         ['label' => 'Jenis mesin aktif', 'value' => (int) $stats['kategori_aktif'], 'total' => (int) $stats['kategori'], 'color' => 'from-green-500 to-green-600'],
         ['label' => 'Model mesin berfoto', 'value' => (int) $stats['mesin_berfoto'], 'total' => (int) $stats['mesin'], 'color' => 'from-coffee-500 to-coffee-600'],
-        ['label' => 'Katalog berfoto', 'value' => (int) $stats['katalog_berfoto'], 'total' => (int) $stats['katalog'], 'color' => 'from-orange-500 to-orange-600'],
     ];
 
     /** Warna seragam untuk titik daftar & grafik donat. */
@@ -42,7 +40,7 @@
 @section('content')
     <div class="page active animate-fade-in" id="page-dashboard">
         {{-- Kartu statistik bergradasi --}}
-        <div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             <div class="stat-card-gradient-1 transform rounded-2xl p-6 text-white shadow-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl">
                 <div class="mb-4 flex items-center justify-between">
                     <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur">
@@ -74,20 +72,6 @@
             <div class="stat-card-gradient-3 transform rounded-2xl p-6 text-white shadow-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl">
                 <div class="mb-4 flex items-center justify-between">
                     <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur">
-                        <i aria-hidden="true" class="fas fa-book text-2xl"></i>
-                    </div>
-                    <span class="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold backdrop-blur">{{ $stats['katalog_berfoto'] }} berfoto</span>
-                </div>
-                <h3 class="mb-1 text-3xl font-bold">{{ number_format($stats['katalog'], 0, ',', '.') }}</h3>
-                <p class="text-sm text-white/80">Katalog Produk</p>
-                <div class="mt-4 h-1 overflow-hidden rounded-full bg-white/20">
-                    <div class="metric-bar h-full rounded-full bg-white/70" style="width: {{ $katalogBar }}%"></div>
-                </div>
-            </div>
-
-            <div class="stat-card-gradient-4 transform rounded-2xl p-6 text-white shadow-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl">
-                <div class="mb-4 flex items-center justify-between">
-                    <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur">
                         <i aria-hidden="true" class="fas fa-envelope text-2xl"></i>
                     </div>
                     <span class="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold backdrop-blur">{{ $stats['pesan_baru'] }} baru</span>
@@ -100,7 +84,7 @@
             </div>
         </div>
         {{-- Kartu kaca ringkasan konten --}}
-        <div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2">
             <div class="glass-card rounded-2xl p-6 transition-all duration-300 hover:shadow-xl">
                 <div class="flex items-center gap-4">
                     <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
@@ -109,18 +93,6 @@
                     <div class="min-w-0">
                         <p class="text-sm text-gray-500 dark:text-gray-400">Foto Model Mesin</p>
                         <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ number_format($stats['foto'], 0, ',', '.') }}</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="glass-card rounded-2xl p-6 transition-all duration-300 hover:shadow-xl">
-                <div class="flex items-center gap-4">
-                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/30">
-                        <i aria-hidden="true" class="fas fa-file-image text-xl text-purple-600 dark:text-purple-400"></i>
-                    </div>
-                    <div class="min-w-0">
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Foto Katalog</p>
-                        <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ number_format($stats['foto_katalog'], 0, ',', '.') }}</p>
                     </div>
                 </div>
             </div>
@@ -259,14 +231,6 @@
                             <i aria-hidden="true" class="fas fa-layer-group"></i>
                         </span>
                         Tambah Jenis Mesin
-                    </a>
-
-                    <a href="{{ route('admin.catalogs.create') }}"
-                       class="flex items-center gap-3 rounded-lg border border-gray-200 p-3 text-sm font-medium text-gray-600 transition-all hover:border-blue-500 hover:bg-blue-50 hover:text-blue-700 dark:border-gray-700 dark:text-gray-400 dark:hover:border-blue-500 dark:hover:bg-blue-900/20 dark:hover:text-blue-400">
-                        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
-                            <i aria-hidden="true" class="fas fa-upload"></i>
-                        </span>
-                        Unggah Katalog
                     </a>
 
                     <a href="{{ route('admin.profile.edit') }}"

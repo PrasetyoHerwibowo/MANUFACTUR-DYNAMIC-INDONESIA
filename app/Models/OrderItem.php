@@ -13,7 +13,6 @@ class OrderItem extends Model
     protected $fillable = [
         'order_id',
         'machine_id',
-        'name',
         'unit_price',
         'quantity',
         'subtotal',
@@ -33,5 +32,21 @@ class OrderItem extends Model
     public function machine(): BelongsTo
     {
         return $this->belongsTo(Machine::class);
+    }
+
+    /**
+     * Nama model mesin yang dipesan (nama item tidak lagi disimpan terpisah).
+     */
+    public function machineName(): string
+    {
+        return $this->machine?->name ?? 'Model mesin dihapus';
+    }
+
+    /**
+     * Kode/tipe model mesin bila ada.
+     */
+    public function machineCode(): ?string
+    {
+        return $this->machine?->model_code;
     }
 }

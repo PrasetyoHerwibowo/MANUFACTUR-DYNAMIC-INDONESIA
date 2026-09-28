@@ -12,7 +12,7 @@
             :value="number_format($stats['total'], 0, ',', '.')"
             icon="fas fa-users"
             gradient="stat-card-gradient-1"
-            :note="$stats['aktif'].' aktif'" />
+            note="Terdaftar di sistem" />
 
         <x-admin.stat-card
             label="Pelanggan Baru"
@@ -36,7 +36,7 @@
             note="Seluruh pelanggan" />
     </div>
 
-    {{-- Filter & tombol tambah pelanggan --}}
+    {{-- Pencarian & tombol tambah pelanggan --}}
     <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
         <form method="GET" action="{{ route('admin.customers.index') }}" class="flex flex-wrap items-end gap-2">
             <div>
@@ -46,21 +46,11 @@
                        class="w-72 rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-sm outline-none focus:border-coffee-500 focus:ring-2 focus:ring-coffee-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
             </div>
 
-            <div>
-                <label for="status" class="mb-1 block text-xs font-semibold text-gray-500 dark:text-gray-400">Status akun</label>
-                <select name="status" id="status"
-                        class="w-40 rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-sm outline-none focus:border-coffee-500 focus:ring-2 focus:ring-coffee-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
-                    <option value="">Semua status</option>
-                    <option value="aktif" @selected(request('status') === 'aktif')>Aktif</option>
-                    <option value="nonaktif" @selected(request('status') === 'nonaktif')>Nonaktif</option>
-                </select>
-            </div>
-
             <button type="submit" class="rounded-xl bg-gray-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-gray-700">
-                Filter
+                Cari
             </button>
 
-            @if (request()->filled('q') || request()->filled('status'))
+            @if (request()->filled('q'))
                 <a href="{{ route('admin.customers.index') }}"
                    class="rounded-xl border border-gray-300 px-4 py-2 text-sm font-bold text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800">
                     Reset
@@ -84,7 +74,6 @@
                         <th class="hidden px-5 py-3.5 lg:table-cell">Alamat</th>
                         <th class="px-5 py-3.5 text-center">Pesanan</th>
                         <th class="hidden px-5 py-3.5 xl:table-cell">Total Lunas</th>
-                        <th class="px-5 py-3.5">Status</th>
                         <th class="px-5 py-3.5 text-right">Aksi</th>
                     </tr>
                 </thead>
@@ -136,18 +125,6 @@
                             </td>
 
                             <td class="px-5 py-3.5">
-                                @if ($customer->is_active)
-                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-[11px] font-bold text-green-800 dark:bg-green-500/15 dark:text-green-300">
-                                        <i aria-hidden="true" class="fas fa-check text-[10px]"></i> Aktif
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-gray-200 px-2.5 py-1 text-[11px] font-bold text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-                                        <i aria-hidden="true" class="fas fa-ban text-[10px]"></i> Nonaktif
-                                    </span>
-                                @endif
-                            </td>
-
-                            <td class="px-5 py-3.5">
                                 <div class="flex flex-wrap items-center justify-end gap-2">
                                     <a href="{{ route('admin.customers.show', $customer) }}"
                                        class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800">
@@ -158,15 +135,6 @@
                                        class="rounded-lg border border-coffee-300 px-3 py-1.5 text-xs font-bold text-coffee-700 transition hover:bg-coffee-50 dark:border-coffee-500/40 dark:text-coffee-300 dark:hover:bg-coffee-500/10">
                                         Ubah
                                     </a>
-
-                                    <form method="POST" action="{{ route('admin.customers.toggle', $customer) }}">
-                                        @csrf
-                                        @method('PUT')
-                                        <button type="submit"
-                                                class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800">
-                                            {{ $customer->is_active ? 'Nonaktifkan' : 'Aktifkan' }}
-                                        </button>
-                                    </form>
 
                                     @if ($customer->orders_count === 0)
                                         <form method="POST" action="{{ route('admin.customers.destroy', $customer) }}"
@@ -184,7 +152,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-5 py-12 text-center">
+                            <td colspan="6" class="px-5 py-12 text-center">
                                 <i aria-hidden="true" class="fas fa-users mb-3 text-4xl text-gray-300 dark:text-gray-600"></i>
                                 <p class="text-sm font-semibold text-gray-600 dark:text-gray-300">Belum ada pelanggan yang sesuai.</p>
                                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -206,7 +174,6 @@
 
     <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
         <i aria-hidden="true" class="fas fa-info-circle mr-1 text-coffee-500"></i>
-        Pelanggan yang sudah memiliki riwayat pesanan tidak dapat dihapus — nonaktifkan akunnya agar tidak dipakai pada
-        pesanan baru.
+        Pelanggan yang sudah memiliki riwayat pesanan tidak dapat dihapus.
     </p>
 @endsection

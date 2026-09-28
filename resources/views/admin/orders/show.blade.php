@@ -106,12 +106,12 @@
                             @foreach ($order->items as $item)
                                 <tr>
                                     <td class="px-5 py-3">
-                                        <p class="font-semibold text-gray-800 dark:text-gray-100">{{ $item->name }}</p>
+                                        <p class="font-semibold text-gray-800 dark:text-gray-100">{{ $item->machineName() }}</p>
 
                                         @if ($item->machine)
                                             <a href="{{ route('products.show', $item->machine) }}" target="_blank"
                                                class="text-xs text-coffee-600 hover:underline dark:text-coffee-400">
-                                                {{ $item->machine->model_code ?: $item->machine->name }}
+                                                {{ $item->machineCode() ?: $item->machine->name }}
                                             </a>
                                         @endif
                                     </td>
@@ -305,33 +305,6 @@
                     </form>
                 </div>
 
-                <div class="glass-card rounded-2xl p-5 shadow-lg">
-                    <h3 class="text-sm font-bold text-gray-800 dark:text-white">
-                        <i aria-hidden="true" class="fas fa-clock mr-1.5 text-coffee-500"></i> Ubah Batas Pembayaran
-                    </h3>
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        Perpanjang batas pembayaran sebelum pelanggan kehabisan waktu. Setelah batas terlewat,
-                        pembayaran otomatis gagal.
-                    </p>
-
-                    <form method="POST" action="{{ route('admin.payments.deadline', $pendingPayment) }}" class="mt-4 space-y-3">
-                        @csrf
-                        @method('PUT')
-
-                        <x-admin.input
-                            name="expires_at"
-                            label="Batas Pembayaran Baru"
-                            type="datetime-local"
-                            :value="$pendingPayment->expires_at?->format('Y-m-d\TH:i') ?? $defaultDeadline"
-                            required />
-
-                        <button type="submit"
-                                class="w-full rounded-xl border border-coffee-300 px-4 py-2.5 text-sm font-bold text-coffee-700 transition hover:bg-coffee-50 dark:border-coffee-500/40 dark:text-coffee-300 dark:hover:bg-coffee-500/10">
-                            <i aria-hidden="true" class="fas fa-save mr-1"></i> Perbarui Batas
-                        </button>
-                    </form>
-                </div>
-
             @elseif ($order->status === \App\Models\Order::STATUS_LUNAS)
                 <div class="glass-card rounded-2xl p-5 shadow-lg">
                     <h3 class="text-sm font-bold text-gray-800 dark:text-white">
@@ -350,7 +323,8 @@
                     </h3>
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                         Pesanan ini tidak memiliki pembayaran yang menunggu. Buat kode pembayaran baru agar pelanggan
-                        mengulang pembayaran dari awal dengan batas waktu yang baru.
+                        mengulang pembayaran dari awal dengan batas {{ \App\Models\Order::PAYMENT_WINDOW_HOURS }} jam
+                        sejak kode dibuat.
                     </p>
 
                     <form method="POST" action="{{ route('admin.orders.payments.renew', $order) }}" class="mt-4 space-y-4">
@@ -363,13 +337,6 @@
                             :selected="$activePayment?->method"
                             placeholder="— Pilih metode —"
                             required />
-
-                        <x-admin.input
-                            name="payment_deadline"
-                            label="Batas Pembayaran"
-                            type="datetime-local"
-                            :value="$defaultDeadline"
-                            hint="Kosongkan untuk memakai batas otomatis {{ \App\Models\Order::PAYMENT_WINDOW_HOURS }} jam sejak kode dibuat." />
 
                         <x-admin.input name="notes" label="Catatan Pembayaran" placeholder="Contoh: pelanggan minta kode transfer ulang" />
 

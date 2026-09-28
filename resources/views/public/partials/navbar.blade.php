@@ -3,7 +3,6 @@
         ['label' => 'Beranda', 'route' => 'home'],
         ['label' => 'Tentang Kami', 'route' => 'about'],
         ['label' => 'Produk & Mesin', 'route' => 'products.index'],
-        ['label' => 'Katalog', 'route' => 'catalogs.index'],
         ['label' => 'Kontak', 'route' => 'contact'],
     ];
 @endphp

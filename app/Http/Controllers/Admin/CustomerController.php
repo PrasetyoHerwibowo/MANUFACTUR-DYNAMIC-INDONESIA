@@ -23,8 +23,6 @@ class CustomerController extends Controller
      */
     public function index(Request $request): View
     {
-        $status = $request->string('status')->toString();
-
         $customers = Customer::query()
             ->withCount('orders')
             ->withSum(
@@ -42,15 +40,12 @@ class CustomerController extends Controller
                         ->orWhere('customer_code', 'like', $keyword);
                 });
             })
-            ->when($status === 'aktif', fn ($query) => $query->where('is_active', true))
-            ->when($status === 'nonaktif', fn ($query) => $query->where('is_active', false))
             ->latest('id')
             ->paginate(12)
             ->withQueryString();
 
         $stats = [
             'total' => Customer::query()->count(),
-            'aktif' => Customer::query()->active()->count(),
             'baru' => Customer::query()->where('created_at', '>=', now()->startOfMonth())->count(),
             'berpesanan' => Customer::query()->has('orders')->count(),
             'nilai_lunas' => (float) Payment::query()->where('status', Payment::STATUS_LUNAS)->sum('amount'),
@@ -120,19 +115,6 @@ class CustomerController extends Controller
     }
 
     /**
-     * Aktifkan / nonaktifkan pelanggan.
-     */
-    public function toggleStatus(Customer $customer): RedirectResponse
-    {
-        $customer->forceFill(['is_active' => ! $customer->is_active])->save();
-
-        return back()->with(
-            'success',
-            'Pelanggan '.$customer->name.' kini '.($customer->is_active ? 'aktif' : 'nonaktif').'.',
-        );
-    }
-
-    /**
      * Hapus pelanggan (hanya bila belum memiliki pesanan).
      */
     public function destroy(Customer $customer): RedirectResponse
@@ -140,7 +122,7 @@ class CustomerController extends Controller
         if ($customer->orders()->exists()) {
             return back()->with(
                 'error',
-                'Pelanggan '.$customer->name.' memiliki riwayat pesanan sehingga tidak dapat dihapus. Nonaktifkan saja akunnya.',
+                'Pelanggan '.$customer->name.' memiliki riwayat pesanan sehingga tidak dapat dihapus.',
             );
         }
 

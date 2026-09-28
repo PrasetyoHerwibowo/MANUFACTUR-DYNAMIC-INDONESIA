@@ -37,8 +37,8 @@
                 </div>
 
                 <x-admin.textarea name="function" label="Fungsi mesin" :value="$machine->function" :rows="3"
-                                  maxlength="100"
-                                  hint="Maksimal 100 karakter. Jelaskan kegunaan mesin ini dalam proses pengolahan." />
+                                  maxlength="375"
+                                  hint="Maksimal 375 karakter. Jelaskan kegunaan mesin ini dalam proses pengolahan." />
 
                 <x-admin.textarea name="short_description" label="Deskripsi singkat" :value="$machine->short_description" :rows="2"
                                   maxlength="150"
@@ -67,8 +67,8 @@
                 </div>
 
                 <x-admin.textarea name="specifications" label="Spesifikasi tambahan" :value="$machine->specifications" :rows="5"
-                                  maxlength="100"
-                                  hint="Maksimal 100 karakter. Satu baris satu spesifikasi, format: Label: Nilai." />
+                                  maxlength="375"
+                                  hint="Maksimal 375 karakter. Satu baris satu spesifikasi, format: Label: Nilai." />
 
                 <x-admin.textarea name="description" label="Deskripsi lengkap" :value="$machine->description" :rows="6"
                                   maxlength="500"

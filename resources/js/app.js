@@ -47,6 +47,11 @@ document.addEventListener('submit', (event) => {
 /**
  * Tolak karakter yang tidak diperbolehkan langsung saat diketik, sehingga
  * kolom hanya berisi karakter yang sah (lihat resources/js/input-filter.js).
+ *
+ * Fungsi juga dipasang di window agar baris formulir yang ditambahkan lewat
+ * JavaScript (mis. item pesanan) ikut mendapat filter karakter.
  */
+window.initInputFilters = initInputFilters;
+
 initInputFilters();
 

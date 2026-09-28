@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Catalog;
 use App\Models\Category;
 use App\Models\Machine;
 use App\Models\MachineImage;
@@ -29,19 +28,12 @@ class HomeController extends Controller
             ->take(6)
             ->get();
 
-        $catalogs = Catalog::query()
-            ->active()
-            ->ordered()
-            ->take(3)
-            ->get();
-
         $stats = [
             'kategori' => Category::query()->active()->count(),
             'mesin' => Machine::query()->active()->count(),
-            'katalog' => Catalog::query()->active()->count(),
             'foto' => MachineImage::query()->count(),
         ];
 
-        return view('public.home', compact('categories', 'featured', 'catalogs', 'stats'));
+        return view('public.home', compact('categories', 'featured', 'stats'));
     }
 }

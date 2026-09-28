@@ -23,16 +23,6 @@
                 <div class="mt-1.5 flex flex-wrap items-center gap-2">
                     <span class="font-mono text-xs text-gray-500 dark:text-gray-400">{{ $customer->customer_code }}</span>
 
-                    @if ($customer->is_active)
-                        <span class="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-[11px] font-bold text-green-800 dark:bg-green-500/15 dark:text-green-300">
-                            <i aria-hidden="true" class="fas fa-check text-[10px]"></i> Aktif
-                        </span>
-                    @else
-                        <span class="inline-flex items-center gap-1.5 rounded-full bg-gray-200 px-2.5 py-1 text-[11px] font-bold text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-                            <i aria-hidden="true" class="fas fa-ban text-[10px]"></i> Nonaktif
-                        </span>
-                    @endif
-
                     @if ($customer->last_order_at)
                         <span class="text-xs text-gray-500 dark:text-gray-400">
                             Pesanan terakhir {{ $customer->last_order_at->format('d M Y') }}
@@ -47,15 +37,6 @@
                class="rounded-xl border border-coffee-300 px-4 py-2.5 text-sm font-bold text-coffee-700 transition hover:bg-coffee-50 dark:border-coffee-500/40 dark:text-coffee-300 dark:hover:bg-coffee-500/10">
                 <i aria-hidden="true" class="fas fa-pen mr-1"></i> Ubah Data
             </a>
-
-            <form method="POST" action="{{ route('admin.customers.toggle', $customer) }}">
-                @csrf
-                @method('PUT')
-                <button type="submit"
-                        class="rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-bold text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800">
-                    {{ $customer->is_active ? 'Nonaktifkan Akun' : 'Aktifkan Akun' }}
-                </button>
-            </form>
 
             @if ($stats['pesanan'] === 0)
                 <form method="POST" action="{{ route('admin.customers.destroy', $customer) }}"

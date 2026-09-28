@@ -24,7 +24,7 @@ class Order extends Model
     public const STATUS_DIBATALKAN = 'dibatalkan';
 
     /** Batas waktu pembayaran (dalam jam) sejak kode pembayaran dibuat. */
-    public const PAYMENT_WINDOW_HOURS = 24;
+    public const PAYMENT_WINDOW_HOURS = 12;
 
     protected $fillable = [
         'customer_id',

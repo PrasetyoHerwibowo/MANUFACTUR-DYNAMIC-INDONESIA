@@ -9,7 +9,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Support\ImageUploader;
 use App\Support\Reference;
-use Carbon\CarbonImmutable;
+use App\Support\Sanitize;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,6 +21,18 @@ use Illuminate\Validation\Rule;
  */
 class OrderController extends Controller
 {
+    /** Batas teks catatan pesanan & aturan karakternya. */
+    private const NOTES_MAX = 250;
+
+    /** Catatan pesanan: huruf, angka, spasi, dan tanda baca (tanpa @ # $ % ^ *). */
+    private const NOTES_PATTERN = '/^[\p{L}\p{N}\s.,;:!?\'"()\[\]{}_\/+&=|~-]*$/u';
+
+    /** Harga satuan dalam rupiah: maksimal 9 digit (skala juta sampai miliar). */
+    private const UNIT_PRICE_MAX = 999999999;
+
+    /** Jumlah unit yang dipesan: maksimal 2 digit. */
+    private const QUANTITY_MAX = 99;
+
     /**
      * Daftar pesanan + pembayaran.
      */
@@ -33,7 +45,7 @@ class OrderController extends Controller
         $method = $request->string('metode')->toString();
 
         $orders = Order::query()
-            ->with(['customer', 'latestPayment'])
+            ->with(['customer', 'latestPayment', 'items.machine'])
             ->when($request->filled('q'), function ($query) use ($request) {
                 $keyword = '%'.$request->string('q').'%';
 
@@ -83,32 +95,47 @@ class OrderController extends Controller
             'customers' => Customer::query()->orderBy('name')->get(['id', 'customer_code', 'name', 'email']),
             'machines' => Machine::query()->ordered()->get(['id', 'name', 'model_code']),
             'methodLabels' => Payment::methodLabels(),
-            'defaultDeadline' => now()->addHours(Order::PAYMENT_WINDOW_HOURS)->format('Y-m-d\TH:i'),
+            'windowHours' => Order::PAYMENT_WINDOW_HOURS,
         ]);
     }
 
     /**
      * Simpan pesanan baru beserta kode pembayarannya.
+     *
+     * Batas pembayaran tidak lagi dipilih admin: setiap kode pembayaran baru
+     * berlaku Order::PAYMENT_WINDOW_HOURS jam sejak dibuat.
      */
     public function store(Request $request): RedirectResponse
     {
+        $request->merge([
+            'notes' => Sanitize::text($request->input('notes')),
+        ]);
+
         $validated = $request->validate([
             'customer_id' => ['required', 'integer', 'exists:customers,id'],
             'items' => ['required', 'array', 'min:1'],
-            'items.*.machine_id' => ['nullable', 'integer', 'exists:machines,id'],
-            'items.*.name' => ['required', 'string', 'max:255'],
-            'items.*.unit_price' => ['required', 'numeric', 'min:0'],
-            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:999'],
+            'items.*.machine_id' => ['required', 'integer', 'exists:machines,id'],
+            'items.*.unit_price' => ['required', 'integer', 'min:0', 'max:'.self::UNIT_PRICE_MAX],
+            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:'.self::QUANTITY_MAX],
             'method' => ['required', Rule::in(array_keys(Payment::methodLabels()))],
-            'payment_deadline' => ['nullable', 'date', 'after:now'],
-            'notes' => ['nullable', 'string', 'max:2000'],
-        ], [], [
-            'customer_id' => 'pelanggan',
-            'items.*.name' => 'nama item',
-            'items.*.unit_price' => 'harga satuan',
-            'items.*.quantity' => 'jumlah',
-            'method' => 'metode pembayaran',
-            'payment_deadline' => 'batas pembayaran',
+            'notes' => ['nullable', 'string', 'max:'.self::NOTES_MAX, 'regex:'.self::NOTES_PATTERN],
+        ], [
+            'customer_id.required' => 'Nama pelanggan wajib dipilih.',
+            'customer_id.exists' => 'Pelanggan yang dipilih tidak ditemukan.',
+            'items.required' => 'Pesanan harus memiliki minimal satu item.',
+            'items.*.machine_id.required' => 'Model mesin wajib dipilih.',
+            'items.*.machine_id.exists' => 'Model mesin yang dipilih tidak ditemukan.',
+            'items.*.unit_price.required' => 'Harga satuan wajib diisi.',
+            'items.*.unit_price.integer' => 'Harga satuan hanya boleh berisi angka.',
+            'items.*.unit_price.max' => 'Harga satuan maksimal '.self::UNIT_PRICE_MAX.' (9 digit).',
+            'items.*.quantity.required' => 'Jumlah wajib diisi.',
+            'items.*.quantity.integer' => 'Jumlah hanya boleh berisi angka.',
+            'items.*.quantity.min' => 'Jumlah minimal 1.',
+            'items.*.quantity.max' => 'Jumlah maksimal '.self::QUANTITY_MAX.' (2 digit).',
+            'method.required' => 'Metode pembayaran wajib dipilih.',
+            'method.in' => 'Metode pembayaran yang dipilih tidak dikenal.',
+            'notes.max' => 'Catatan pesanan maksimal '.self::NOTES_MAX.' karakter.',
+            'notes.regex' => 'Catatan pesanan hanya boleh berisi huruf, angka, spasi, dan tanda baca.',
         ]);
 
         $order = DB::transaction(function () use ($validated): Order {
@@ -126,8 +153,7 @@ class OrderController extends Controller
                 $total += $subtotal;
 
                 $order->items()->create([
-                    'machine_id' => $item['machine_id'] ?? null,
-                    'name' => $item['name'],
+                    'machine_id' => $item['machine_id'],
                     'unit_price' => $item['unit_price'],
                     'quantity' => $item['quantity'],
                     'subtotal' => $subtotal,
@@ -136,12 +162,8 @@ class OrderController extends Controller
 
             $order->forceFill(['total_amount' => $total])->save();
 
-            $order->createPayment(
-                $validated['method'],
-                filled($validated['payment_deadline'] ?? null)
-                    ? CarbonImmutable::parse($validated['payment_deadline'])
-                    : null,
-            );
+            // Batas pembayaran otomatis: 12 jam sejak kode pembayaran dibuat.
+            $order->createPayment($validated['method']);
 
             $order->customer?->forceFill(['last_order_at' => now()])->save();
 
@@ -169,7 +191,6 @@ class OrderController extends Controller
         return view('admin.orders.show', [
             'order' => $order,
             'methodLabels' => Payment::methodLabels(),
-            'defaultDeadline' => now()->addHours(Order::PAYMENT_WINDOW_HOURS)->format('Y-m-d\TH:i'),
         ]);
     }
 
@@ -228,12 +249,14 @@ class OrderController extends Controller
 
     /**
      * Buat kode pembayaran baru: pelanggan mengulang pembayaran dari awal.
+     *
+     * Batas pembayaran mengikuti Order::PAYMENT_WINDOW_HOURS jam sejak kode
+     * dibuat, sehingga tidak perlu diisi manual oleh admin.
      */
     public function renewPayment(Request $request, Order $order): RedirectResponse
     {
         $validated = $request->validate([
             'method' => ['required', Rule::in(array_keys(Payment::methodLabels()))],
-            'payment_deadline' => ['nullable', 'date', 'after:now'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -253,9 +276,7 @@ class OrderController extends Controller
 
         $payment = $order->createPayment(
             $validated['method'],
-            filled($validated['payment_deadline'] ?? null)
-                ? CarbonImmutable::parse($validated['payment_deadline'])
-                : null,
+            null,
             null,
             $validated['notes'] ?? null,
         );
@@ -263,24 +284,6 @@ class OrderController extends Controller
         return back()->with(
             'success',
             'Kode pembayaran baru '.$payment->payment_code.' dibuat. Pelanggan mengulang pembayaran dari awal.',
-        );
-    }
-
-    /**
-     * Ubah batas pembayaran (perpanjang / percepat).
-     */
-    public function updateDeadline(Request $request, Payment $payment): RedirectResponse
-    {
-        $validated = $request->validate([
-            'expires_at' => ['required', 'date', 'after:now'],
-        ], [], ['expires_at' => 'batas pembayaran']);
-
-        $payment->extendDeadline(CarbonImmutable::parse($validated['expires_at']));
-
-        return back()->with(
-            'success',
-            'Batas pembayaran '.$payment->payment_code.' diperbarui menjadi '
-                .$payment->fresh()->expires_at->format('d M Y H:i').' WIB.',
         );
     }
 }

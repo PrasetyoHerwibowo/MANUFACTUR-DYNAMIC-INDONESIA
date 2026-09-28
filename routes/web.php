@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\Admin\AccountController;
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
-use App\Http\Controllers\Admin\CatalogController as AdminCatalogController;
 use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
 use App\Http\Controllers\Admin\CompanyProfileController;
 use App\Http\Controllers\Admin\ContactMessageController;
@@ -10,7 +9,6 @@ use App\Http\Controllers\Admin\CustomerController as AdminCustomerController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\MachineController as AdminMachineController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
-use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProductController;
@@ -28,9 +26,6 @@ Route::get('/tentang-kami', [PageController::class, 'about'])->name('about');
 
 Route::get('/produk', [ProductController::class, 'index'])->name('products.index');
 Route::get('/produk/{machine}', [ProductController::class, 'show'])->name('products.show');
-
-Route::get('/katalog', [CatalogController::class, 'index'])->name('catalogs.index');
-Route::get('/katalog/{catalog}', [CatalogController::class, 'show'])->name('catalogs.show');
 
 Route::get('/kontak', [PageController::class, 'contact'])->name('contact');
 Route::post('/kontak', [PageController::class, 'sendContact'])->name('contact.send');
@@ -59,15 +54,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->except('show')
             ->parameters(['machines' => 'machine']);
 
-        // Katalog + foto halaman katalog
-        Route::resource('catalogs', AdminCatalogController::class)
-            ->except('show')
-            ->parameters(['catalogs' => 'catalog']);
-        Route::put('catalogs/{catalog}/images/{image}', [AdminCatalogController::class, 'updateImage'])
-            ->name('catalogs.images.update');
-        Route::delete('catalogs/{catalog}/images/{image}', [AdminCatalogController::class, 'destroyImage'])
-            ->name('catalogs.images.destroy');
-
         // Profil perusahaan
         Route::get('profil', [CompanyProfileController::class, 'edit'])->name('profile.edit');
         Route::put('profil', [CompanyProfileController::class, 'update'])->name('profile.update');
@@ -86,13 +72,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('pesanan/{order}/pembayaran-baru', [AdminOrderController::class, 'renewPayment'])
             ->name('orders.payments.renew');
 
-        // Pembayaran: verifikasi lunas, tandai gagal, dan ubah batas waktu
+        // Pembayaran: verifikasi lunas atau tandai gagal.
         Route::put('pembayaran/{payment}/lunas', [AdminOrderController::class, 'verifyPayment'])
             ->name('payments.verify');
         Route::put('pembayaran/{payment}/gagal', [AdminOrderController::class, 'failPayment'])
             ->name('payments.fail');
-        Route::put('pembayaran/{payment}/batas-waktu', [AdminOrderController::class, 'updateDeadline'])
-            ->name('payments.deadline');
 
         // Pelanggan terdaftar
         Route::get('pelanggan', [AdminCustomerController::class, 'index'])->name('customers.index');
@@ -101,8 +85,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('pelanggan/{customer}', [AdminCustomerController::class, 'show'])->name('customers.show');
         Route::get('pelanggan/{customer}/ubah', [AdminCustomerController::class, 'edit'])->name('customers.edit');
         Route::put('pelanggan/{customer}', [AdminCustomerController::class, 'update'])->name('customers.update');
-        Route::put('pelanggan/{customer}/status', [AdminCustomerController::class, 'toggleStatus'])
-            ->name('customers.toggle');
         Route::delete('pelanggan/{customer}', [AdminCustomerController::class, 'destroy'])->name('customers.destroy');
 
         // Akun admin

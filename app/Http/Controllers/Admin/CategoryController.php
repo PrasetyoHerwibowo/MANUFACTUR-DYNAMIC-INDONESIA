@@ -28,6 +28,15 @@ class CategoryController extends Controller
     private const TAGLINE_PATTERN = '/^[\p{L}\p{N}][\p{L}\p{N}\s]*$/u';
 
     /**
+     * Teks bebas (deskripsi): huruf, angka, spasi, dan tanda baca.
+     *
+     * Simbol seperti @ # $ % ^ * serta tanda < dan > yang dipakai untuk
+     * menyusun tag HTML tidak diperbolehkan, sehingga kolom ini hanya berisi
+     * kalimat biasa.
+     */
+    private const TEXT_PATTERN = '/^[\p{L}\p{N}\s.,;:!?\'"()\[\]{}_\/+&=|~-]*$/u';
+
+    /**
      * Daftar jenis mesin.
      */
     public function index(): View
@@ -123,7 +132,7 @@ class CategoryController extends Controller
         return $request->validate([
             'name' => ['required', 'string', 'max:100', 'regex:'.self::NAME_PATTERN],
             'tagline' => ['nullable', 'string', 'max:50', 'regex:'.self::TAGLINE_PATTERN],
-            'description' => ['nullable', 'string', 'max:150'],
+            'description' => ['nullable', 'string', 'max:150', 'regex:'.self::TEXT_PATTERN],
         ], $this->messages());
     }
 
@@ -141,6 +150,7 @@ class CategoryController extends Controller
             'tagline.max' => 'Tagline singkat maksimal 50 karakter.',
             'tagline.regex' => 'Tagline singkat hanya boleh berisi huruf dan angka.',
             'description.max' => 'Deskripsi maksimal 150 karakter.',
+            'description.regex' => 'Deskripsi hanya boleh berisi huruf, angka, spasi, dan tanda baca. Simbol seperti @ # $ % ^ * tidak diperbolehkan.',
         ];
     }
 }

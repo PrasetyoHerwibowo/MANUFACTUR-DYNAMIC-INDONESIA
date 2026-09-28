@@ -50,8 +50,6 @@
                         Kami</a></li>
                 <li><a href="{{ route('products.index') }}"
                         class="transition hover:text-red-600 dark:hover:text-red-400">Produk &amp; Mesin</a></li>
-                <li><a href="{{ route('catalogs.index') }}"
-                        class="transition hover:text-red-600 dark:hover:text-red-400">Katalog</a></li>
                 <li><a href="{{ route('contact') }}"
                         class="transition hover:text-red-600 dark:hover:text-red-400">Kontak</a></li>
                 <li><a href="{{ route('admin.login') }}"

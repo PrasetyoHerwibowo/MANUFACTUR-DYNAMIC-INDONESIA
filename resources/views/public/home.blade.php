@@ -34,7 +34,6 @@ html:not(.dark) .hero-bottom-fade {
         $statsDisplay = [
             ['label' => 'Jenis Mesin', 'value' => $stats['kategori']],
             ['label' => 'Model Mesin', 'value' => $stats['mesin']],
-            ['label' => 'Katalog Produk', 'value' => $stats['katalog']],
             ['label' => 'Foto Produk', 'value' => $stats['foto']],
         ];
         $exports = array_values(array_filter(array_map('trim', explode(',', (string) $company->export_countries)), fn ($v) => $v !== ''));
@@ -76,10 +75,10 @@ html:not(.dark) .hero-bottom-fade {
                 </p>
 
                 <div class="flex flex-wrap items-center gap-4">
-                    <a href="{{ route('catalogs.index') }}"
+                    <a href="{{ route('products.index') }}"
                         class="inline-flex items-center gap-2.5 rounded-lg bg-red-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-red-600/40 transition-all hover:-translate-y-0.5 hover:bg-red-700 hover:shadow-red-600/60">
-                        <i class="ti ti-book text-base"></i>
-                        <span>Lihat Katalog</span>
+                        <i class="ti ti-tools text-base"></i>
+                        <span>Lihat Produk</span>
                     </a>
                     @if ($wa)
                         <a href="https://wa.me/{{ $wa }}" target="_blank" rel="noopener"
@@ -91,7 +90,7 @@ html:not(.dark) .hero-bottom-fade {
                 </div>
 
                 <div
-                    class="mt-12 grid max-w-xl grid-cols-4 gap-4 border-t border-gray-300/60 pt-4 dark:border-slate-700/60">
+                    class="mt-12 grid max-w-xl grid-cols-3 gap-4 border-t border-gray-300/60 pt-4 dark:border-slate-700/60">
                     @foreach ($statsDisplay as $stat)
                         <div>
                             <p class="font-condensed text-2xl font-bold text-slate-900 dark:text-white">{{ $stat['value'] }}+</p>
@@ -204,33 +203,6 @@ html:not(.dark) .hero-bottom-fade {
             </div>
         </section>
     @endif
-
-            {{-- ============ KATALOG ============ --}}
-    @if ($catalogs->isNotEmpty())
-    <section class="bg-white py-20 transition-colors duration-300 dark:bg-[#0B111A]">
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div class="mb-10 pb-4 text-center">
-                <div
-                class="mb-2 inline-flex items-center gap-2 rounded bg-gray-200 px-3 py-1 text-xs font-bold uppercase tracking-wider text-red-600 dark:bg-slate-800 dark:text-red-400">
-                <i class="ti ti-file-text"></i> Katalog &amp; Price List
-            </div>
-            <h2
-            class="font-condensed text-3xl font-bold uppercase tracking-tight text-slate-900 dark:text-white md:text-4xl lg:text-5xl">
-            Katalog <span class="text-red-500">Resmi</span>
-        </h2>
-        <p class="mt-3 max-w-2xl mx-auto text-sm text-slate-600 dark:text-slate-400">
-            Lihat dan unduh katalog produk lengkap beserta informasi detail unit kami.
-        </p>
-    </div>
-    
-    <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        @foreach ($catalogs as $catalog)
-        <x-catalog-card :catalog="$catalog" />
-                    @endforeach
-                </div>
-            </div>
-        </section>
-        @endif
 
     {{-- ============ MENGAPA MEMILIH KAMI ============ --}}
     <section id="about" class="relative overflow-hidden bg-white py-20 transition-colors duration-300 dark:bg-[#0B111A]">

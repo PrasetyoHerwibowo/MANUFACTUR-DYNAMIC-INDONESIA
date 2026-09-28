@@ -190,18 +190,6 @@ class Payment extends Model
     }
 
     /**
-     * Ubah batas pembayaran (perpanjang / percepat).
-     */
-    public function extendDeadline(CarbonInterface $deadline): void
-    {
-        $this->forceFill(['expires_at' => $deadline])->save();
-
-        if ($this->status === self::STATUS_MENUNGGU) {
-            $this->order?->forceFill(['payment_deadline' => $deadline])->save();
-        }
-    }
-
-    /**
      * Tandai semua pembayaran yang melewati batas pembayaran sebagai gagal.
      *
      * @return int jumlah pembayaran yang diubah statusnya

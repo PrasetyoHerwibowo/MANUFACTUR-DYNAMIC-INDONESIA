@@ -3,8 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Catalog;
-use App\Models\CatalogImage;
 use App\Models\Category;
 use App\Models\ContactMessage;
 use App\Models\Machine;
@@ -21,10 +19,7 @@ class DashboardController extends Controller
             'mesin' => Machine::query()->count(),
             'mesin_aktif' => Machine::query()->active()->count(),
             'mesin_berfoto' => Machine::query()->has('images')->count(),
-            'katalog' => Catalog::query()->count(),
-            'katalog_berfoto' => Catalog::query()->has('images')->count(),
             'foto' => MachineImage::query()->count(),
-            'foto_katalog' => CatalogImage::query()->count(),
             'pesan' => ContactMessage::query()->count(),
             'pesan_baru' => ContactMessage::query()->unread()->count(),
         ];

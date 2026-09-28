@@ -30,6 +30,12 @@ export const INPUT_FILTERS = {
         note: 'huruf, spasi, tanda hubung (-), dan tanda &',
     },
 
+    // Nama orang: hanya huruf dan spasi. Dipakai pada nama pelanggan.
+    name: {
+        disallowed: /[^\p{L}\s]/u,
+        note: 'huruf dan spasi',
+    },
+
     // Tagline singkat: huruf dan angka, dengan spasi sebagai pemisah kata.
     alnum: {
         disallowed: /[^\p{L}\p{N}\s]/u,
@@ -42,6 +48,21 @@ export const INPUT_FILTERS = {
     text: {
         disallowed: /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F<>\u00A0\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/u,
         note: 'huruf, angka, dan tanda baca',
+    },
+
+    // Teks berketerangan resmi (deskripsi jenis mesin & catatan pesanan):
+    // huruf, angka, spasi, dan tanda baca. Simbol @ # $ % ^ * serta tanda <
+    // dan > tidak diperbolehkan. Selaras dengan TEXT_PATTERN pada
+    // CategoryController dan OrderController.
+    punctuation: {
+        disallowed: /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F<>@#$%^*\u00A0\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/u,
+        note: 'huruf, angka, dan tanda baca',
+    },
+
+    // Hanya angka: dipakai pada kode pos, harga satuan, dan jumlah pesanan.
+    digits: {
+        disallowed: /[^0-9]/u,
+        note: 'angka',
     },
 };
 

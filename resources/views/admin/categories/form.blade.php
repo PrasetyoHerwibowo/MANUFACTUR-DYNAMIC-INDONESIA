@@ -47,8 +47,8 @@
                 :value="$category->description"
                 :rows="3"
                 maxlength="150"
-                hint="Huruf, angka, dan tanda baca diperbolehkan. Maksimal 150 karakter. Karakter khusus pembentuk tag HTML otomatis diabaikan saat diketik."
-                data-input-filter="text"
+                hint="Huruf, angka, dan tanda baca diperbolehkan. Maksimal 150 karakter. Simbol seperti @ # $ % ^ * serta karakter pembentuk tag HTML otomatis diabaikan saat diketik."
+                data-input-filter="punctuation"
             />
 
             <div class="flex flex-wrap items-center gap-3 border-t border-stone-200 pt-5 dark:border-slate-700">
