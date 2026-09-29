@@ -10,21 +10,21 @@
     <div class="max-w-3xl">
         <form method="POST"
               action="{{ $isEdit ? route('admin.categories.update', $category) : route('admin.categories.store') }}"
-            class="space-y-5 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-7 dark:border-slate-700 dark:bg-slate-900"
-              @csrf
+              class="space-y-5 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-7 dark:border-slate-700 dark:bg-slate-900">
+            @csrf
             @if ($isEdit)
                 @method('PUT')
             @endif
 
             <x-admin.input
-            name="name"
+                name="name"
                 label="Nama jenis mesin"
                 :value="$category->name"
                 required
                 maxlength="100"
                 pattern="[A-Za-z][A-Za-z &amp;-]*"
                 title="Hanya huruf, spasi, tanda hubung (-), dan tanda &amp;."
-                hint="Hanya huruf, spasi, tanda hubung (-), dan tanda &. Maksimal 100 karakter. Karakter lain otomatis diabaikan saat diketik."
+                hint="Hanya huruf, spasi, tanda hubung (-), dan tanda &. Maksimal 100 karakter. Tidak boleh sama dengan jenis mesin lain."
                 data-input-filter="letter"
                 placeholder="Contoh: Mesin Pengolahan Kopi"
             />

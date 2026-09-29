@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('customer_code', 40)->unique();
             $table->string('name');
             $table->string('email')->unique();
-            $table->string('phone', 30)->nullable();
+            $table->string('phone', 30)->unique();
             $table->string('company')->nullable();
             $table->text('address')->nullable();
             $table->string('city', 100)->nullable();

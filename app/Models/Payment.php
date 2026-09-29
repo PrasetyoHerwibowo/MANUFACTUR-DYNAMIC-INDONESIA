@@ -25,12 +25,6 @@ class Payment extends Model
 
     public const METHOD_TRANSFER_BANK = 'transfer_bank';
 
-    public const METHOD_VIRTUAL_ACCOUNT = 'virtual_account';
-
-    public const METHOD_QRIS = 'qris';
-
-    public const METHOD_TUNAI = 'tunai';
-
     protected $fillable = [
         'order_id',
         'payment_code',
@@ -88,9 +82,6 @@ class Payment extends Model
     {
         return [
             self::METHOD_TRANSFER_BANK => 'Transfer Bank',
-            self::METHOD_VIRTUAL_ACCOUNT => 'Virtual Account',
-            self::METHOD_QRIS => 'QRIS',
-            self::METHOD_TUNAI => 'Tunai / Cash',
         ];
     }
 
