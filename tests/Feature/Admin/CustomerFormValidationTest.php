@@ -48,7 +48,7 @@ class CustomerFormValidationTest extends TestCase
             'phone' => '081234567890',
             'company' => 'CV Kopi Nusantara',
             'address' => 'Jl. Merdeka 1',
-            'city' => 'Bandung',
+            'city' => 'Kota Bandung',
             'province' => 'Jawa Barat',
             'postal_code' => '40123',
             'notes' => null,
@@ -86,30 +86,34 @@ class CustomerFormValidationTest extends TestCase
 
     public function test_international_and_local_phone_formats_collapse_to_one_value(): void
     {
-        // Nama dibuat berbeda per iterasi agar tidak bentrok dengan aturan
-        // keunikan nama + telepon — yang justru diuji oleh test lain.
         $formats = [
-            '081234567890' => '081234567890',
-            '0812-3456-7890' => '081234567890',
-            '(0812) 3456 7890' => '081234567890',
-            '0812 3456 7890' => '081234567890',
-            '+62 812-3456-7890' => '081234567890',
-            '62 812 3456 7890' => '081234567890',
-            '+6281234567890' => '081234567890',
+            '081234567890',
+            '0812-3456-7890',
+            '(0812) 3456 7890',
+            '0812 3456 7890',
+            '+62 812-3456-7890',
+            '62 812 3456 7890',
+            '+6281234567890',
         ];
 
-        foreach (array_keys($formats) as $index => $input) {
+        // Nama dibuat berbeda per iterasi agar tidak bentrok dengan aturan
+        // keunikan nama + telepon — yang justru diuji oleh test lain.
+        // Suffiksnya huruf, bukan angka, karena nama hanya boleh berisi
+        // huruf dan spasi (lihat NAME_PATTERN di CustomerRequest).
+        $suffixes = ['sari', 'wulan', 'dari', 'medina', 'ratna', 'ayu', 'loka'];
+
+        foreach ($formats as $index => $input) {
             $this->actingAs($this->admin)
                 ->post(route('admin.customers.store'), $this->payload([
-                    'name' => 'Sari Wulandari '.$index,
-                    'email' => 'sari-'.$index.'@contoh.test',
+                    'name' => 'Sari Wulandari '.$suffixes[$index],
+                    'email' => 'sari-'.$suffixes[$index].'@contoh.test',
                     'phone' => $input,
                 ]))
                 ->assertSessionHasNoErrors();
         }
 
         $this->assertSame(
-            array_values(array_unique(array_values($formats))),
+            ['081234567890'],
             Customer::query()->pluck('phone')->unique()->values()->all(),
             'Semua gaya penulisan harus menjadi satu bentuk kanonik yang sama.',
         );
@@ -253,13 +257,16 @@ class CustomerFormValidationTest extends TestCase
     {
         $customer = $this->customer();
 
+        // Nama + nomor telepon sengaja dibiarkan sama dengan yang tersimpan,
+        // sehingga aturan keunikan hanya bisa lolos bila record sendiri
+        // benar-benar dikecualikan.
         $this->actingAs($this->admin)
             ->put(route('admin.customers.update', $customer), $this->payload([
-                'city' => 'Bandung Baru',
+                'city' => 'Kota Bekasi',
             ]))
             ->assertSessionHasNoErrors();
 
-        $this->assertSame('Bandung Baru', $customer->fresh()->city);
+        $this->assertSame('Kota Bekasi', $customer->fresh()->city);
     }
 
     public function test_update_rejects_another_customers_email(): void
@@ -334,7 +341,7 @@ class CustomerFormValidationTest extends TestCase
                 'email' => '  budi@contoh.test  ',
                 'company' => '  CV Kopi Nusantara  ',
                 'address' => '  Jl. Merdeka 1  ',
-                'city' => '  Bandung  ',
+                'city' => '  Kota Bandung  ',
                 'province' => '  Jawa Barat  ',
                 'postal_code' => '  40123  ',
                 'notes' => '  catatan  ',
@@ -346,7 +353,7 @@ class CustomerFormValidationTest extends TestCase
             'email' => 'budi@contoh.test',
             'company' => 'CV Kopi Nusantara',
             'address' => 'Jl. Merdeka 1',
-            'city' => 'Bandung',
+            'city' => 'Kota Bandung',
             'province' => 'Jawa Barat',
             'postal_code' => '40123',
             'notes' => 'catatan',

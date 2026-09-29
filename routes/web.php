@@ -63,6 +63,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('pesan/{message}', [ContactMessageController::class, 'show'])->name('messages.show');
         Route::delete('pesan/{message}', [ContactMessageController::class, 'destroy'])->name('messages.destroy');
 
+        // Balasan pesan (draf & kirim langsung via Gmail SMTP)
+        Route::post('pesan/{message}/balasan', [ContactMessageController::class, 'storeReply'])
+            ->name('messages.replies.store');
+        Route::post('pesan/{message}/balasan/kirim', [ContactMessageController::class, 'sendReply'])
+            ->name('messages.replies.send');
+        Route::delete('pesan/{message}/balasan/{reply}', [ContactMessageController::class, 'destroyReply'])
+            ->name('messages.replies.destroy');
+
         // Pesanan + pembayaran (ditampilkan dalam satu daftar)
         Route::get('pesanan', [AdminOrderController::class, 'index'])->name('orders.index');
         Route::get('pesanan/tambah', [AdminOrderController::class, 'create'])->name('orders.create');
