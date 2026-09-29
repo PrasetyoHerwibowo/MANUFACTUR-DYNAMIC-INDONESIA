@@ -17,8 +17,10 @@ use Illuminate\Validation\Rule;
  * 1. Sanitasi (memotong spasi tepi, membersihkan nomor telepon) yang
  *    dijalankan di {@see self::prepareForValidation()} sehingga Aturan
  *    validasi selalu memeriksa nilai yang sudah bersih.
- * 2. Keunikan biodata: nama pelanggan harus unik, dan kombinasi
- *    nama + nomor telepon yang sama juga ditolak.
+ * 2. Keunikan biodata: kombinasi nama + nomor telepon yang sama tidak boleh
+ *    tercatat dua kali. Nama saja TIDAK harus unik — dua orang berbeda boleh
+ *    sama-sama bernama sama, dan yang membedakan mereka adalah nomor telepon
+ *    (atau email, bila pelanggan tidak punya telepon).
  * 3. Unik email, dengan pengecualian record sendiri saat menyunting.
  * 4. Wilayah (provinsi & kota/kabupaten) wajib dipilih dari daftar resmi.
  *
@@ -146,7 +148,6 @@ abstract class CustomerRequest extends FormRequest
                 'string',
                 'max:'.self::LENGTHS['name'],
                 'regex:'.self::NAME_PATTERN,
-                Rule::unique('customers', 'name')->ignore($this->customerId()),
                 $this->nameAndPhoneMustBeUnique(),
             ],
             'email' => [
@@ -215,7 +216,6 @@ abstract class CustomerRequest extends FormRequest
             'name.max' => 'Nama pelanggan maksimal '.self::LENGTHS['name'].' karakter.',
             'name.string' => 'Nama pelanggan harus berupa teks.',
             'name.regex' => 'Nama pelanggan hanya boleh berisi huruf dan spasi.',
-            'name.unique' => 'Nama pelanggan ini sudah terdaftar. Biodata yang sama tidak boleh diinputkan dua kali.',
             'email.required' => 'Email wajib diisi.',
             'email.email' => 'Format email tidak valid. Contoh: nama@perusahaan.com',
             'email.max' => 'Email maksimal '.self::LENGTHS['email'].' karakter.',
@@ -321,7 +321,7 @@ abstract class CustomerRequest extends FormRequest
      * - Perbandingan nama memakai LOWER() secara sadar, bukan mengandalkan
      *   collation kolom. Kollation bawaan MySQL (utf8mb4_*) memang
      *   mengabaikan huruf besar-kecil, sedangkan SQLite tidak — tanpa
-     *   LOWER()Aturan ini akan menangkap "BUDI SANTOSO" di produksi tetapi
+     *   LOWER(), aturan ini akan menangkap "BUDI SANTOSO" di produksi tetapi
      *   lolos di test. Nilai yang sudah dinormalisasi (tanpa spasi tepi)
      *   tetap dibandingkan apa adanya, hanya huruf besarnya yang diabaikan.
      */
@@ -356,7 +356,7 @@ abstract class CustomerRequest extends FormRequest
 
             if ($exists) {
                 $fail('Pelanggan dengan nama dan nomor telepon tersebut sudah terdaftar. '
-                    .'Biodata yang sama tidak boleh diinputkan dua kali.');
+                    .'Gunakan email yang berbeda bila ini memang pelanggan yang berbeda.');
             }
         };
     }

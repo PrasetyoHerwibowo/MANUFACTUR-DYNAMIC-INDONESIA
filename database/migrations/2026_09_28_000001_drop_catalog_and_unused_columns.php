@@ -21,7 +21,6 @@ return new class extends Migration
         Schema::table('customers', function (Blueprint $table) {
             $table->dropIndex(['is_active', 'name']);
             $table->dropColumn('is_active');
-            $table->unique('name');
         });
 
         Schema::table('order_items', function (Blueprint $table) {
@@ -39,7 +38,6 @@ return new class extends Migration
         });
 
         Schema::table('customers', function (Blueprint $table) {
-            $table->dropUnique(['name']);
             $table->boolean('is_active')->default(true)->after('notes');
             $table->index(['is_active', 'name']);
         });
