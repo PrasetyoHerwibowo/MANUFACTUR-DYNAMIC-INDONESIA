@@ -7,7 +7,6 @@ use App\Support\ImageUploader;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 class AccountController extends Controller
@@ -54,15 +53,10 @@ class AccountController extends Controller
     public function updatePassword(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'current_password' => ['required', 'string'],
             'password' => ['required', 'string', 'min:6', 'confirmed'],
         ]);
 
         $user = $request->user();
-
-        if (! Hash::check($validated['current_password'], $user->password)) {
-            return back()->withErrors(['current_password' => 'Password saat ini tidak sesuai.']);
-        }
 
         $user->update(['password' => $validated['password']]);
 

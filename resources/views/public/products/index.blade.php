@@ -5,7 +5,7 @@
 
 @section('content')
     <x-page-header
-        title="Produk &amp; Mesin"
+        title="Produk & Mesin"
         subtitle="Telusuri jenis mesin, model, dan fungsi mesin yang kami produksi untuk kebutuhan pengolahan kopi dan kakao Anda."
         :crumbs="[['label' => 'Beranda', 'url' => route('home')], ['label' => 'Produk & Mesin']]"
     />

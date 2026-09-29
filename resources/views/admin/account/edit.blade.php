@@ -40,14 +40,6 @@
             <h2 class="text-base font-extrabold text-stone-900 dark:text-white">Ganti password</h2>
 
             <div>
-                <label for="current_password" class="mb-1.5 block text-sm font-semibold text-stone-700 dark:text-slate-200">Password saat ini</label>
-                <input type="password" name="current_password" id="current_password" required autocomplete="current-password"
-                       placeholder="Masukkan password saat ini"
-                       class="w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-coffee-500 focus:ring-2 focus:ring-coffee-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400">
-                @error('current_password') <p class="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
-            </div>
-
-            <div>
                 <label for="password" class="mb-1.5 block text-sm font-semibold text-stone-700 dark:text-slate-200">Password baru</label>
                 <input type="password" name="password" id="password" required autocomplete="new-password"
                        placeholder="Masukkan password baru"

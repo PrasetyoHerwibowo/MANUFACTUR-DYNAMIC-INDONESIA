@@ -10,6 +10,7 @@ use App\Support\Slug;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CategoryController extends Controller
 {
@@ -80,7 +81,7 @@ class CategoryController extends Controller
 
     public function update(Request $request, Category $category): RedirectResponse
     {
-        $validated = $this->validated($request);
+        $validated = $this->validated($request, $category);
 
         $validated['slug'] = Slug::make(Category::class, $validated['name'], $category->id);
 
@@ -119,7 +120,7 @@ class CategoryController extends Controller
      *
      * @return array<string, mixed>
      */
-    private function validated(Request $request): array
+    private function validated(Request $request, ?Category $category = null): array
     {
         // Sanitasi dijalankan lebih dahulu (tag HTML, entitas, dan karakter
         // kendali dibuang) supaya pola karakter di bawah memeriksa teks bersih.
@@ -129,11 +130,48 @@ class CategoryController extends Controller
             'description' => Sanitize::text($request->input('description')),
         ]);
 
+        $name = $request->input('name');
+
         return $request->validate([
-            'name' => ['required', 'string', 'max:100', 'regex:'.self::NAME_PATTERN],
+            'name' => array_merge(
+                ['required', 'string', 'max:100', 'regex:'.self::NAME_PATTERN],
+                $this->uniqueNameRules($category, $name),
+            ),
             'tagline' => ['nullable', 'string', 'max:50', 'regex:'.self::TAGLINE_PATTERN],
             'description' => ['nullable', 'string', 'max:150', 'regex:'.self::TEXT_PATTERN],
         ], $this->messages());
+    }
+
+    /**
+     * Aturan nama jenis mesin tidak boleh sama dengan jenis mesin lain.
+     *
+     * @return array<int, mixed>
+     */
+    private function uniqueNameRules(?Category $category, ?string $name): array
+    {
+        if ($category !== null && mb_strtolower(trim((string) $category->name)) === mb_strtolower(trim((string) $name))) {
+            return [];
+        }
+
+        $rule = Rule::unique('categories', 'name');
+        if ($category !== null) {
+            $rule = $rule->ignore($category->id);
+        }
+
+        return [
+            $rule,
+            function ($attribute, $value, $fail) use ($category) {
+                if (filled($value)) {
+                    $query = Category::query()->whereRaw('LOWER(name) = ?', [mb_strtolower(trim($value))]);
+                    if ($category !== null) {
+                        $query->where('id', '!=', $category->id);
+                    }
+                    if ($query->exists()) {
+                        $fail('Nama jenis mesin sudah digunakan oleh jenis mesin lain.');
+                    }
+                }
+            },
+        ];
     }
 
     /**
@@ -147,6 +185,7 @@ class CategoryController extends Controller
             'name.required' => 'Nama jenis mesin wajib diisi.',
             'name.max' => 'Nama jenis mesin maksimal 100 karakter.',
             'name.regex' => 'Nama jenis mesin hanya boleh berisi huruf, spasi, tanda hubung (-), dan tanda &.',
+            'name.unique' => 'Nama jenis mesin sudah digunakan oleh jenis mesin lain.',
             'tagline.max' => 'Tagline singkat maksimal 50 karakter.',
             'tagline.regex' => 'Tagline singkat hanya boleh berisi huruf dan angka.',
             'description.max' => 'Deskripsi maksimal 150 karakter.',
