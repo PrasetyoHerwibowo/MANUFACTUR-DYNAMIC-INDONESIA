@@ -50,17 +50,61 @@
                 <h2 class="text-base font-extrabold text-stone-900 dark:text-white">Spesifikasi &amp; deskripsi lengkap</h2>
 
                 <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                    <x-admin.input name="capacity" label="Kapasitas" :value="$machine->capacity" maxlength="20"
-                                   placeholder="500 kg/jam" hint="Maksimal 20 karakter." />
+                    {{-- Kapasitas: desimal pakai titik, maxlength 10 karakter, blokir koma --}}
+                    <x-admin.input name="capacity_amount" label="Kapasitas (kg)" type="number" step="any" min="0" max="99999999" maxlength="10"
+                                   onkeydown="if(event.key===',')event.preventDefault();"
+                                   oninput="if(this.value.length>this.maxLength)this.value=this.value.slice(0,this.maxLength);"
+                                   :value="$machine->capacity_amount" placeholder="500"
+                                   hint="Hanya angka, titik (.) untuk desimal. Maks. 10 karakter." />
 
-                    <x-admin.input name="power" label="Daya" :value="$machine->power" maxlength="20"
-                                   placeholder="5,5 kW / 3 phase" hint="Maksimal 20 karakter." />
+                    {{-- Waktu: bilangan bulat, maxlength 3 digit, blokir koma --}}
+                    <x-admin.input name="capacity_time" label="Waktu (jam)" type="number" step="1" min="1" max="999" maxlength="3"
+                                   onkeydown="if(event.key==='.'||event.key===',')event.preventDefault();"
+                                   oninput="if(this.value.length>this.maxLength)this.value=this.value.slice(0,this.maxLength);"
+                                   :value="$machine->capacity_time ?? 1" placeholder="1"
+                                   hint="Angka bulat durasi jam. Maks. 3 digit (1–999)." />
 
-                    <x-admin.input name="dimension" label="Dimensi" :value="$machine->dimension" maxlength="20"
-                                   placeholder="180 x 90 x 140 cm" hint="Maksimal 20 karakter." />
+                    {{-- Daya kW: desimal pakai titik, maxlength 7 karakter (9999.99), blokir koma --}}
+                    <x-admin.input name="power_kw" label="Daya (kW)" type="number" step="any" min="0" max="9999.99" maxlength="7"
+                                   onkeydown="if(event.key===',')event.preventDefault();"
+                                   oninput="if(this.value.length>this.maxLength)this.value=this.value.slice(0,this.maxLength);"
+                                   :value="$machine->power_kw" placeholder="5.5"
+                                   hint="Hanya angka, titik (.) untuk desimal. Maks. 9999.99 kW." />
 
-                    <x-admin.input name="weight" label="Berat" :value="$machine->weight" maxlength="10"
-                                   placeholder="320 kg" hint="Maksimal 10 karakter." />
+                    {{-- Phase: bilangan bulat, maxlength 2 digit, blokir koma dan titik --}}
+                    <x-admin.input name="power_phase" label="Phase Listrik" type="number" step="1" min="1" max="99" maxlength="2"
+                                   onkeydown="if(event.key==='.'||event.key===',')event.preventDefault();"
+                                   oninput="if(this.value.length>this.maxLength)this.value=this.value.slice(0,this.maxLength);"
+                                   :value="$machine->power_phase" placeholder="3"
+                                   hint="Angka bulat phase listrik. Maks. 2 digit (contoh: 1 atau 3)." />
+
+                    {{-- Dimensi panjang: desimal pakai titik, maxlength 7 karakter, blokir koma --}}
+                    <x-admin.input name="dimension_length" label="Panjang (cm)" type="number" step="any" min="0" max="99999" maxlength="7"
+                                   onkeydown="if(event.key===',')event.preventDefault();"
+                                   oninput="if(this.value.length>this.maxLength)this.value=this.value.slice(0,this.maxLength);"
+                                   :value="$machine->dimension_length" placeholder="180"
+                                   hint="Hanya angka, titik (.) untuk desimal. Maks. 7 karakter." />
+
+                    {{-- Dimensi lebar --}}
+                    <x-admin.input name="dimension_width" label="Lebar (cm)" type="number" step="any" min="0" max="99999" maxlength="7"
+                                   onkeydown="if(event.key===',')event.preventDefault();"
+                                   oninput="if(this.value.length>this.maxLength)this.value=this.value.slice(0,this.maxLength);"
+                                   :value="$machine->dimension_width" placeholder="90"
+                                   hint="Hanya angka, titik (.) untuk desimal. Maks. 7 karakter." />
+
+                    {{-- Dimensi tinggi --}}
+                    <x-admin.input name="dimension_height" label="Tinggi (cm)" type="number" step="any" min="0" max="99999" maxlength="7"
+                                   onkeydown="if(event.key===',')event.preventDefault();"
+                                   oninput="if(this.value.length>this.maxLength)this.value=this.value.slice(0,this.maxLength);"
+                                   :value="$machine->dimension_height" placeholder="140"
+                                   hint="Hanya angka, titik (.) untuk desimal. Maks. 7 karakter." />
+
+                    {{-- Berat: desimal pakai titik, maxlength 8 karakter, blokir koma --}}
+                    <x-admin.input name="weight_amount" label="Berat (kg)" type="number" step="any" min="0" max="999999" maxlength="8"
+                                   onkeydown="if(event.key===',')event.preventDefault();"
+                                   oninput="if(this.value.length>this.maxLength)this.value=this.value.slice(0,this.maxLength);"
+                                   :value="$machine->weight_amount" placeholder="320"
+                                   hint="Hanya angka, titik (.) untuk desimal. Maks. 8 karakter." />
 
                     <x-admin.input name="material" label="Material" :value="$machine->material" maxlength="100"
                                    placeholder="Stainless steel 304" hint="Maksimal 100 karakter." />

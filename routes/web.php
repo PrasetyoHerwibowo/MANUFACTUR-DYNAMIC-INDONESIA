@@ -73,8 +73,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         // Pesanan + pembayaran (ditampilkan dalam satu daftar)
         Route::get('pesanan', [AdminOrderController::class, 'index'])->name('orders.index');
-        Route::get('pesanan/tambah', [AdminOrderController::class, 'create'])->name('orders.create');
-        Route::post('pesanan', [AdminOrderController::class, 'store'])->name('orders.store');
         Route::get('pesanan/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
         Route::delete('pesanan/{order}', [AdminOrderController::class, 'destroy'])->name('orders.destroy');
         Route::post('pesanan/{order}/pembayaran-baru', [AdminOrderController::class, 'renewPayment'])
@@ -88,8 +86,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         // Pelanggan terdaftar
         Route::get('pelanggan', [AdminCustomerController::class, 'index'])->name('customers.index');
-        Route::get('pelanggan/tambah', [AdminCustomerController::class, 'create'])->name('customers.create');
-        Route::post('pelanggan', [AdminCustomerController::class, 'store'])->name('customers.store');
         Route::get('pelanggan/{customer}', [AdminCustomerController::class, 'show'])->name('customers.show');
         Route::get('pelanggan/{customer}/ubah', [AdminCustomerController::class, 'edit'])->name('customers.edit');
         Route::put('pelanggan/{customer}', [AdminCustomerController::class, 'update'])->name('customers.update');

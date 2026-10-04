@@ -77,30 +77,11 @@ class CustomerController extends Controller
         return view('admin.customers.show', compact('customer', 'orders', 'stats'));
     }
 
-    public function create(): View
-    {
-        return view('admin.customers.form', ['customer' => new Customer()]);
-    }
-
     public function edit(Customer $customer): View
     {
         return view('admin.customers.form', compact('customer'));
     }
 
-    /**
-     * Tambah pelanggan baru.
-     */
-    public function store(StoreCustomerRequest $request): RedirectResponse
-    {
-        $validated = $request->validated();
-        $validated['customer_code'] = Reference::make(Reference::CUSTOMER, Customer::class, 'customer_code');
-
-        $customer = Customer::query()->create($validated);
-
-        return redirect()
-            ->route('admin.customers.show', $customer)
-            ->with('success', 'Pelanggan '.$customer->name.' berhasil ditambahkan.');
-    }
 
     /**
      * Perbarui data pelanggan.

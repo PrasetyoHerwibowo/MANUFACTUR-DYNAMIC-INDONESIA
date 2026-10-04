@@ -17,10 +17,10 @@
             </nav>
         @endif
 
-        <h1 class="text-2xl font-extrabold tracking-tight sm:text-3xl lg:text-4xl">{{ $title }}</h1>
+        <h1 class="text-2xl font-extrabold tracking-tight sm:text-3xl lg:text-4xl break-all">{{ $title }}</h1>
 
         @if ($subtitle)
-            <p class="mt-4 max-w-3xl text-sm leading-relaxed text-gray-200 dark:text-gray-300 sm:text-base">{{ $subtitle }}</p>
+            <p class="mt-4 max-w-3xl text-sm leading-relaxed text-gray-200 dark:text-gray-300 sm:text-base break-all">{{ $subtitle }}</p>
         @endif
     </div>
 </section>

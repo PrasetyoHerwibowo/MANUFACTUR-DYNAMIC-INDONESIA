@@ -88,10 +88,7 @@
             @endif
         </form>
 
-        <a href="{{ route('admin.orders.create') }}"
-           class="rounded-xl bg-coffee-600 px-4 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-coffee-700">
-            <i aria-hidden="true" class="fas fa-plus mr-1"></i> Tambah Pesanan
-        </a>
+
     </div>
 
     <div class="glass-card overflow-hidden rounded-2xl shadow-lg">

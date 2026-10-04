@@ -18,7 +18,7 @@
     <section class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
         <div class="grid gap-10 lg:grid-cols-3">
             {{-- Foto utama + galeri --}}
-            <div class="lg:col-span-2">
+            <div class="lg:col-span-2 min-w-0">
                 <div class="overflow-hidden rounded-3xl border border-stone-200 dark:border-gray-700 bg-stone-100 dark:bg-gray-700 shadow-sm">
                     <img src="{{ $machine->photo }}" alt="{{ $machine->name }}" class="aspect-[4/3] w-full object-cover">
                 </div>
@@ -37,8 +37,8 @@
             </div>
 
             {{-- Informasi ringkas --}}
-            <aside class="space-y-5">
-                <div class="rounded-2xl border border-stone-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm">
+            <aside class="space-y-5 min-w-0">
+                <div class="rounded-2xl border border-stone-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm min-w-0">
                     @if ($machine->category)
                         <a href="{{ route('products.index', ['kategori' => $machine->category->slug]) }}"
                            class="inline-block rounded-full bg-red-50 dark:bg-red-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-red-700 dark:text-red-400">
@@ -55,9 +55,9 @@
                     @endif
 
                     @if ($machine->function)
-                        <div class="mt-5 rounded-xl bg-stone-50 dark:bg-gray-800/40 p-4">
+                        <div class="mt-5 rounded-xl bg-stone-50 dark:bg-gray-800/40 p-4 min-w-0">
                             <p class="text-xs font-bold uppercase tracking-wide text-stone-400 dark:text-gray-500">Fungsi Mesin</p>
-                            <p class="mt-2 text-sm leading-relaxed text-stone-600 dark:text-gray-300">{{ $machine->function }}</p>
+                            <p class="mt-2 text-sm leading-relaxed text-stone-600 dark:text-gray-300 break-all">{{ $machine->function }}</p>
                         </div>
                     @endif
 
@@ -70,20 +70,15 @@
                             'Material' => $machine->material,
                         ] as $label => $value)
                             @if (filled($value))
-                                <div class="flex justify-between gap-4 border-b border-dashed border-stone-200 dark:border-gray-700 pb-2 last:border-0">
+                                <div class="grid grid-cols-3 gap-4 border-b border-dashed border-stone-200 dark:border-gray-700 pb-2 last:border-0 min-w-0">
                                     <span class="text-stone-500 dark:text-gray-400">{{ $label }}</span>
-                                    <span class="text-right font-semibold text-stone-800 dark:text-white">{{ $value }}</span>
+                                    <span class="col-span-2 text-right font-semibold text-stone-800 dark:text-white break-all min-w-0">{{ $value }}</span>
                                 </div>
                             @endif
                         @endforeach
                     </div>
 
                     <div class="mt-6 space-y-2.5">
-                        <a href="{{ route('contact', ['mesin' => $machine->slug]) }}"
-                           class="block rounded-xl bg-gradient-to-r from-red-600 to-red-700 px-5 py-3 text-center text-sm font-bold text-white transition hover:from-red-700 hover:to-red-800">
-                            Minta Penawaran
-                        </a>
-
                         @php $wa = preg_replace('/[^0-9]/', '', (string) $company->whatsapp); @endphp
                         @if ($wa)
                             <a href="https://wa.me/{{ $wa }}?text={{ urlencode('Halo, saya ingin bertanya tentang mesin '.$machine->name) }}"
@@ -110,13 +105,13 @@
         {{-- Deskripsi & spesifikasi --}}
         <div class="mt-14 grid gap-10 lg:grid-cols-3">
             @if ($machine->description)
-                <div class="lg:col-span-2">
+                <div class="lg:col-span-2 min-w-0">
                     <h3 class="text-xl font-extrabold text-stone-900 dark:text-white">Deskripsi &amp; keunggulan</h3>
 
                     <div class="mt-4 space-y-4 text-sm leading-relaxed text-stone-600 dark:text-gray-300">
                         @foreach (preg_split('/\r\n|\r|\n/', $machine->description) as $paragraph)
                             @if (trim($paragraph) !== '')
-                                <p>{{ trim($paragraph) }}</p>
+                                <p class="break-all">{{ trim($paragraph) }}</p>
                             @endif
                         @endforeach
                     </div>
@@ -124,14 +119,14 @@
             @endif
 
             @if (! empty($machine->specificationLines()))
-                <div class="{{ $machine->description ? 'rounded-2xl border border-stone-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm' : 'max-w-2xl lg:col-span-2' }}">
+                <div class="{{ $machine->description ? 'rounded-2xl border border-stone-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm' : 'max-w-2xl lg:col-span-2' }} min-w-0">
                     <h3 class="text-base font-extrabold text-stone-900 dark:text-white">Spesifikasi teknis</h3>
 
                     <dl class="mt-4 space-y-3 text-sm">
                         @foreach ($machine->specificationLines() as $label => $value)
-                            <div class="flex justify-between gap-4 border-b border-dashed border-stone-200 dark:border-gray-700 pb-2 last:border-0">
+                            <div class="grid grid-cols-3 gap-4 border-b border-dashed border-stone-200 dark:border-gray-700 pb-2 last:border-0 min-w-0">
                                 <dt class="text-stone-500 dark:text-gray-400">{{ $label }}</dt>
-                                <dd class="text-right font-semibold text-stone-800 dark:text-white">{{ $value }}</dd>
+                                <dd class="col-span-2 text-right font-semibold text-stone-800 dark:text-white break-all min-w-0">{{ $value }}</dd>
                             </div>
                         @endforeach
                     </dl>

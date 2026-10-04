@@ -16,17 +16,22 @@ class MachineController extends Controller
 {
     /** Batas panjang teks setiap kolom formulir. */
     private const LENGTHS = [
-        'name' => 100,
-        'model_code' => 50,
-        'function' => 375,
-        'short_description' => 150,
-        'capacity' => 20,
-        'power' => 20,
-        'dimension' => 20,
-        'weight' => 10,
-        'material' => 100,
-        'specifications' => 375,
-        'description' => 500,
+        'name'             => 100,
+        'model_code'       => 50,
+        'function'         => 375,
+        'short_description'=> 150,
+        // Nilai di bawah adalah panjang string gabungan yang digenerate, bukan input langsung.
+        // capacity:  "99999999 kg/999 jam" = 20 char  → 30 aman
+        // power:     "9999.99 kW / 99 phase" = 22 char → 30 aman
+        // dimension: "9999.9 x 9999.9 x 9999.9 cm" = 28 char → 40 aman
+        // weight:    "999999.9 kg" = 11 char → 15 aman
+        'capacity'         => 30,
+        'power'            => 30,
+        'dimension'        => 40,
+        'weight'           => 15,
+        'material'         => 100,
+        'specifications'   => 375,
+        'description'      => 500,
     ];
 
     /**
@@ -134,15 +139,66 @@ class MachineController extends Controller
      */
     private function validated(Request $request, ?Machine $machine = null): array
     {
+        $capacityAmount = $this->trimmed($request->input('capacity_amount'));
+        $capacityTime = $this->trimmed($request->input('capacity_time'));
+
+        $powerKw = $this->trimmed($request->input('power_kw'));
+        $powerPhase = $this->trimmed($request->input('power_phase'));
+
+        $dimensionLength = $this->trimmed($request->input('dimension_length'));
+        $dimensionWidth = $this->trimmed($request->input('dimension_width'));
+        $dimensionHeight = $this->trimmed($request->input('dimension_height'));
+
+        $weightAmount = $this->trimmed($request->input('weight_amount'));
+
+        // Format Kapasitas: "500 kg/jam" atau "500 kg/2 jam"
+        $capacity = null;
+        if ($capacityAmount !== null && $capacityAmount !== '') {
+            $timeInt = (int) ($capacityTime ?? 1);
+            $capacity = $timeInt <= 1
+                ? $capacityAmount.' kg/jam'
+                : $capacityAmount.' kg/'.$timeInt.' jam';
+        }
+
+        // Format Daya: "5.5 kW / 3 phase" atau "5.5 kW" (desimal pakai titik)
+        $power = null;
+        if ($powerKw !== null && $powerKw !== '') {
+            if ($powerPhase !== null && $powerPhase !== '') {
+                $power = $powerKw.' kW / '.$powerPhase.' phase';
+            } else {
+                $power = $powerKw.' kW';
+            }
+        }
+
+        // Format Dimensi: "180 x 90 x 140 cm" (desimal pakai titik)
+        $dimension = null;
+        if ($dimensionLength !== null && $dimensionWidth !== null && $dimensionHeight !== null) {
+            $dimension = $dimensionLength.' x '.$dimensionWidth.' x '.$dimensionHeight.' cm';
+        }
+
+        // Format Berat: "320 kg" (desimal pakai titik)
+        $weight = null;
+        if ($weightAmount !== null && $weightAmount !== '') {
+            $weight = $weightAmount.' kg';
+        }
+
         $request->merge([
             'name' => $this->trimmed($request->input('name')),
             'model_code' => $this->trimmed($request->input('model_code')),
             'function' => $this->trimmed($request->input('function')),
             'short_description' => $this->trimmed($request->input('short_description')),
-            'capacity' => $this->trimmed($request->input('capacity')),
-            'power' => $this->trimmed($request->input('power')),
-            'dimension' => $this->trimmed($request->input('dimension')),
-            'weight' => $this->trimmed($request->input('weight')),
+            'capacity_amount' => $capacityAmount,
+            'capacity_time' => $capacityTime,
+            'capacity' => $capacity,
+            'power_kw' => $powerKw,
+            'power_phase' => $powerPhase,
+            'power' => $power,
+            'dimension_length' => $dimensionLength,
+            'dimension_width' => $dimensionWidth,
+            'dimension_height' => $dimensionHeight,
+            'dimension' => $dimension,
+            'weight_amount' => $weightAmount,
+            'weight' => $weight,
             'material' => $this->trimmed($request->input('material')),
             'specifications' => $this->trimmed($request->input('specifications')),
             'description' => $this->trimmed($request->input('description')),
@@ -162,9 +218,17 @@ class MachineController extends Controller
             ),
             'function' => ['nullable', 'string', 'max:'.self::LENGTHS['function']],
             'short_description' => ['nullable', 'string', 'max:'.self::LENGTHS['short_description']],
+            'capacity_amount' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
+            'capacity_time' => ['nullable', 'integer', 'min:1', 'max:999'],
             'capacity' => ['nullable', 'string', 'max:'.self::LENGTHS['capacity']],
+            'power_kw' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
+            'power_phase' => ['nullable', 'integer', 'min:1', 'max:99'],
             'power' => ['nullable', 'string', 'max:'.self::LENGTHS['power']],
+            'dimension_length' => ['nullable', 'numeric', 'min:0', 'max:99999'],
+            'dimension_width' => ['nullable', 'numeric', 'min:0', 'max:99999'],
+            'dimension_height' => ['nullable', 'numeric', 'min:0', 'max:99999'],
             'dimension' => ['nullable', 'string', 'max:'.self::LENGTHS['dimension']],
+            'weight_amount' => ['nullable', 'numeric', 'min:0', 'max:999999'],
             'weight' => ['nullable', 'string', 'max:'.self::LENGTHS['weight']],
             'material' => ['nullable', 'string', 'max:'.self::LENGTHS['material']],
             'specifications' => ['nullable', 'string', 'max:'.self::LENGTHS['specifications']],
@@ -200,13 +264,17 @@ class MachineController extends Controller
     /** Rapikan spasi di ujung teks dan ubah teks kosong menjadi null. */
     private function trimmed(mixed $value): ?string
     {
-        if (! is_string($value)) {
+        if ($value === null) {
             return null;
         }
 
-        $value = trim($value);
+        if (is_numeric($value) || is_string($value)) {
+            $value = trim((string) $value);
 
-        return $value === '' ? null : $value;
+            return $value === '' ? null : $value;
+        }
+
+        return null;
     }
 
     /**
@@ -226,9 +294,33 @@ class MachineController extends Controller
             'model_code.unique' => 'Kode model ":input" sudah dipakai model mesin lain pada jenis mesin yang sama.',
             'function.max' => 'Fungsi mesin maksimal '.self::LENGTHS['function'].' karakter.',
             'short_description.max' => 'Deskripsi singkat maksimal '.self::LENGTHS['short_description'].' karakter.',
+            'capacity_amount.numeric' => 'Kapasitas (kg) harus berupa angka.',
+            'capacity_amount.min' => 'Kapasitas (kg) tidak boleh kurang dari 0.',
+            'capacity_amount.max' => 'Kapasitas (kg) maksimal 99.999.999 kg.',
+            'capacity_time.integer' => 'Waktu (jam) harus berupa angka bulat.',
+            'capacity_time.min' => 'Waktu (jam) minimal 1 jam.',
+            'capacity_time.max' => 'Waktu (jam) maksimal 999 jam.',
             'capacity.max' => 'Kapasitas maksimal '.self::LENGTHS['capacity'].' karakter.',
+            'power_kw.numeric' => 'Daya (kW) harus berupa angka.',
+            'power_kw.min' => 'Daya (kW) tidak boleh kurang dari 0.',
+            'power_kw.max' => 'Daya (kW) maksimal 99.999 kW.',
+            'power_phase.integer' => 'Phase listrik harus berupa angka.',
+            'power_phase.min' => 'Phase listrik minimal 1 phase.',
+            'power_phase.max' => 'Phase listrik maksimal 99 phase.',
             'power.max' => 'Daya maksimal '.self::LENGTHS['power'].' karakter.',
+            'dimension_length.numeric' => 'Panjang dimensi (cm) harus berupa angka.',
+            'dimension_length.min' => 'Panjang dimensi (cm) tidak boleh kurang dari 0.',
+            'dimension_length.max' => 'Panjang dimensi (cm) maksimal 99.999 cm.',
+            'dimension_width.numeric' => 'Lebar dimensi (cm) harus berupa angka.',
+            'dimension_width.min' => 'Lebar dimensi (cm) tidak boleh kurang dari 0.',
+            'dimension_width.max' => 'Lebar dimensi (cm) maksimal 99.999 cm.',
+            'dimension_height.numeric' => 'Tinggi dimensi (cm) harus berupa angka.',
+            'dimension_height.min' => 'Tinggi dimensi (cm) tidak boleh kurang dari 0.',
+            'dimension_height.max' => 'Tinggi dimensi (cm) maksimal 99.999 cm.',
             'dimension.max' => 'Dimensi maksimal '.self::LENGTHS['dimension'].' karakter.',
+            'weight_amount.numeric' => 'Berat (kg) harus berupa angka.',
+            'weight_amount.min' => 'Berat (kg) tidak boleh kurang dari 0.',
+            'weight_amount.max' => 'Berat (kg) maksimal 999.999 kg.',
             'weight.max' => 'Berat maksimal '.self::LENGTHS['weight'].' karakter.',
             'material.max' => 'Material maksimal '.self::LENGTHS['material'].' karakter.',
             'specifications.max' => 'Spesifikasi tambahan maksimal '.self::LENGTHS['specifications'].' karakter.',
