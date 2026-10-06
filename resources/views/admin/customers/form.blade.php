@@ -61,7 +61,7 @@
     --}}
 
     <form method="POST"
-          action="{{ $isEdit ? route('admin.customers.update', $customer) : route('admin.customers.store') }}">
+          action="{{ route('admin.customers.update', $customer) }}">
         @csrf
         @if ($isEdit)
             @method('PUT')

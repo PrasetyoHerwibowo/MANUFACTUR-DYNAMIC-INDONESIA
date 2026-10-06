@@ -107,7 +107,7 @@
             <p class="mx-auto mt-3 max-w-2xl text-sm text-red-50">
                 Kirimkan kebutuhan mesin Anda, tim kami akan membantu memilih spesifikasi yang paling sesuai.
             </p>
-            <a href="{{ route('contact') }}" class="mt-7 inline-block rounded-xl bg-white dark:bg-gray-800 px-6 py-3 text-sm font-bold text-red-800 dark:text-red-300 transition hover:bg-red-50 dark:hover:bg-red-500/10">
+            <a href="{{ route('contact') }}" class="mt-7 inline-block rounded-xl bg-white dark:bg-gray-800 px-6 py-3 text-sm font-bold text-red-800 dark:text-white transition hover:bg-red-50 dark:hover:bg-gray-700">
                 Hubungi Kami Sekarang
             </a>
         </div>
