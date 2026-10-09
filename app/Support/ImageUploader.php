@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Services\SupabaseStorageService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -9,8 +10,8 @@ use Illuminate\Support\Str;
 /**
  * Helper unggah/ hapus foto.
  *
- * Foto disimpan pada disk "uploads" (folder public/uploads) agar file
- * langsung dapat diakses pada instalasi XAMPP tanpa perlu symlink storage.
+ * Mendukung penyimpanan ke Supabase Storage (Object Storage) secara otomatis
+ * jika terkonfigurasi, dengan fallback ke disk "uploads" lokal (folder public/uploads).
  */
 class ImageUploader
 {
@@ -18,10 +19,6 @@ class ImageUploader
 
     /**
      * Ekstensi yang diizinkan beserta tipe MIME yang sesuai.
-     *
-     * Nama berkas disimpan memakai ekstensi dari daftar ini (bukan ekstensi
-     * kiriman peramban) supaya berkas gambar tidak dapat disimpan dengan
-     * ekstensi berbahaya seperti .php.
      *
      * @var array<string, string>
      */
@@ -35,7 +32,8 @@ class ImageUploader
     ];
 
     /**
-     * Simpan file foto dan kembalikan path relatifnya (mis. machines/xxx.jpg).
+     * Simpan file foto ke Supabase Storage (atau lokal jika belum terkonfigurasi).
+     * Mengembalikan URL string publik (Supabase) atau path relatif (Lokal).
      */
     public static function store(?UploadedFile $file, string $folder): ?string
     {
@@ -43,6 +41,16 @@ class ImageUploader
             return null;
         }
 
+        $supabase = app(SupabaseStorageService::class);
+
+        if ($supabase->isConfigured()) {
+            $supabaseUrl = $supabase->upload($file, $folder);
+            if ($supabaseUrl) {
+                return $supabaseUrl;
+            }
+        }
+
+        // Fallback ke penyimpanan lokal disk uploads bila Supabase gagal/tidak aktif
         $name = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME));
         $name = Str::limit($name ?: 'foto', 40, '');
 
@@ -56,9 +64,6 @@ class ImageUploader
 
     /**
      * Ekstensi aman untuk berkas yang diunggah.
-     *
-     * Diprioritaskan dari tipe MIME asli berkas; bila tipe tidak dikenali,
-     * ekstensi kiriman peramban dibersihkan lebih dahulu (hanya huruf/angka).
      */
     private static function extension(UploadedFile $file): string
     {
@@ -74,11 +79,17 @@ class ImageUploader
     }
 
     /**
-     * Hapus foto dari disk.
+     * Hapus foto dari Supabase Storage atau disk lokal.
      */
     public static function delete(?string $path): void
     {
         if (! filled($path)) {
+            return;
+        }
+
+        if (Str::startsWith($path, ['http://', 'https://'])) {
+            $supabase = app(SupabaseStorageService::class);
+            $supabase->delete($path);
             return;
         }
 
