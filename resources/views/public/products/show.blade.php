@@ -90,15 +90,7 @@
                     </div>
                 </div>
 
-                <div class="rounded-2xl border border-stone-200 dark:border-gray-700 bg-stone-50 dark:bg-gray-800/40 p-6">
-                    <p class="text-xs font-bold uppercase tracking-wide text-stone-400 dark:text-gray-500">Butuh model lain?</p>
-                    <p class="mt-2 text-sm leading-relaxed text-stone-600 dark:text-gray-300">
-                        Kami dapat menyesuaikan dimensi, kapasitas, dan material mesin sesuai kebutuhan lini produksi Anda.
-                    </p>
-                    <a href="{{ route('products.index') }}" class="mt-3 inline-block text-sm font-bold text-red-700 dark:text-red-400">
-                        Lihat semua model &rarr;
-                    </a>
-                </div>
+
             </aside>
         </div>
 
