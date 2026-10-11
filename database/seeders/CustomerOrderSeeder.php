@@ -35,7 +35,6 @@ class CustomerOrderSeeder extends Seeder
                     'province' => $data['province'],
                     'postal_code' => $data['postal_code'],
                     'notes' => $data['notes'] ?? null,
-                    'is_active' => $data['is_active'] ?? true,
                 ],
             );
 
@@ -84,7 +83,6 @@ class CustomerOrderSeeder extends Seeder
 
             $order->items()->create([
                 'machine_id' => $machine?->id,
-                'name' => $item['name'] ?? $machine?->name ?? 'Item pesanan',
                 'unit_price' => $item['unit_price'],
                 'quantity' => $item['quantity'],
                 'subtotal' => $subtotal,
@@ -183,7 +181,7 @@ class CustomerOrderSeeder extends Seeder
                     ],
                     [
                         'days_ago' => 8,
-                        'method' => Payment::METHOD_VIRTUAL_ACCOUNT,
+                        'method' => Payment::METHOD_TRANSFER_BANK,
                         'payment' => 'lunas',
                         'notes' => 'Sudah dikirim melalui ekspedisi darat.',
                         'items' => [
@@ -192,7 +190,7 @@ class CustomerOrderSeeder extends Seeder
                     ],
                     [
                         'days_ago' => 15,
-                        'method' => Payment::METHOD_QRIS,
+                        'method' => Payment::METHOD_TRANSFER_BANK,
                         'payment' => 'gagal',
                         'notes' => 'Pelanggan meminta kode pembayaran baru.',
                         'items' => [
@@ -223,9 +221,9 @@ class CustomerOrderSeeder extends Seeder
                     ],
                     [
                         'days_ago' => 3,
-                        'method' => Payment::METHOD_TUNAI,
+                        'method' => Payment::METHOD_TRANSFER_BANK,
                         'payment' => 'kedaluwarsa',
-                        'notes' => 'Pelanggan belum mengonfirmasi pembayaran tunai.',
+                        'notes' => 'Pelanggan belum mengonfirmasi pembayaran transfer bank.',
                         'items' => [
                             ['name' => 'Biaya Servis Rutin Mesin Huller', 'unit_price' => 850000, 'quantity' => 2],
                         ],
@@ -244,7 +242,7 @@ class CustomerOrderSeeder extends Seeder
                 'orders' => [
                     [
                         'days_ago' => 2,
-                        'method' => Payment::METHOD_VIRTUAL_ACCOUNT,
+                        'method' => Payment::METHOD_TRANSFER_BANK,
                         'payment' => 'menunggu',
                         'notes' => 'Proyek pengembangan pabrik kakao tahap pertama.',
                         'items' => [
@@ -273,7 +271,6 @@ class CustomerOrderSeeder extends Seeder
                 'province' => 'DIY',
                 'postal_code' => '55281',
                 'notes' => 'Calon pelanggan, baru menanyakan harga mesin sangrai.',
-                'is_active' => false,
                 'orders' => [],
             ],
         ];
