@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Login Admin — {{ $company->name }}</title>
+    <title>Panel Admin — {{ $company->name }}</title>
 
     <link rel="icon" href="{{ $company->logoUrl() ?? asset('uploads/placeholder.svg') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">

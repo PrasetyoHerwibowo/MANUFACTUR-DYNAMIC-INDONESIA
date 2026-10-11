@@ -52,8 +52,8 @@
                         class="transition hover:text-red-600 dark:hover:text-red-400">Produk &amp; Mesin</a></li>
                 <li><a href="{{ route('contact') }}"
                         class="transition hover:text-red-600 dark:hover:text-red-400">Kontak</a></li>
-                <li><a href="{{ route('admin.login') }}"
-                        class="transition hover:text-red-600 dark:hover:text-red-400">Login Admin</a></li>
+                <li><a href="{{ auth()->check() ? route('admin.dashboard') : route('admin.login') }}"
+                        class="transition hover:text-red-600 dark:hover:text-red-400">Panel Admin</a></li>
             </ul>
         </div>
 
