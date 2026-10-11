@@ -25,7 +25,6 @@
             'group' => 'Website',
             'items' => [
                 ['route' => 'admin.profile.edit', 'icon' => 'fas fa-building', 'label' => 'Profil Perusahaan', 'match' => 'admin.profile.*'],
-                ['route' => 'admin.messages.index', 'icon' => 'fas fa-envelope', 'label' => 'Pesan Masuk', 'match' => 'admin.messages.*', 'badge' => true],
             ],
         ],
         [
@@ -37,12 +36,10 @@
     ];
 
     $currentUser = auth()->user();
-    $unreadMessages = \App\Models\ContactMessage::query()->unread()->count();
     $pendingPayments = \App\Models\Payment::query()->pending()->count();
 
-    /** Jumlah notifikasi pada sebuah item menu (true = pesan masuk). */
+    /** Jumlah notifikasi pada sebuah item menu. */
     $badgeCount = fn (array $item): int => match ($item['badge'] ?? null) {
-        'messages', true => $unreadMessages,
         'payments' => $pendingPayments,
         default => 0,
     };
@@ -188,16 +185,6 @@
                             <i class="fas fa-sun hidden text-[10px] text-yellow-500 dark:inline" aria-hidden="true"></i>
                         </span>
                     </button>
-
-                    <a href="{{ route('admin.messages.index') }}" title="Pesan masuk"
-                       class="relative p-2 text-gray-400 transition hover:text-coffee-600 dark:hover:text-coffee-400">
-                        <i aria-hidden="true" class="fas fa-bell text-lg"></i>
-                        @if ($unreadMessages > 0)
-                            <span class="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
-                                {{ $unreadMessages }}
-                            </span>
-                        @endif
-                    </a>
 
                     <a href="{{ route('admin.account.edit') }}" title="{{ $currentUser->name }}">
                         <img src="{{ $currentUser->avatarUrl() }}" alt="{{ $currentUser->name }}"

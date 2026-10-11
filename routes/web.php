@@ -4,7 +4,6 @@ use App\Http\Controllers\Admin\AccountController;
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
 use App\Http\Controllers\Admin\CompanyProfileController;
-use App\Http\Controllers\Admin\ContactMessageController;
 use App\Http\Controllers\Admin\CustomerController as AdminCustomerController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\MachineController as AdminMachineController;
@@ -28,7 +27,6 @@ Route::get('/produk', [ProductController::class, 'index'])->name('products.index
 Route::get('/produk/{machine}', [ProductController::class, 'show'])->name('products.show');
 
 Route::get('/kontak', [PageController::class, 'contact'])->name('contact');
-Route::post('/kontak', [PageController::class, 'sendContact'])->name('contact.send');
 
 /*
 |--------------------------------------------------------------------------
@@ -57,19 +55,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Profil perusahaan
         Route::get('profil', [CompanyProfileController::class, 'edit'])->name('profile.edit');
         Route::put('profil', [CompanyProfileController::class, 'update'])->name('profile.update');
-
-        // Pesan dari formulir kontak
-        Route::get('pesan', [ContactMessageController::class, 'index'])->name('messages.index');
-        Route::get('pesan/{message}', [ContactMessageController::class, 'show'])->name('messages.show');
-        Route::delete('pesan/{message}', [ContactMessageController::class, 'destroy'])->name('messages.destroy');
-
-        // Balasan pesan (draf & kirim langsung via Gmail SMTP)
-        Route::post('pesan/{message}/balasan', [ContactMessageController::class, 'storeReply'])
-            ->name('messages.replies.store');
-        Route::post('pesan/{message}/balasan/kirim', [ContactMessageController::class, 'sendReply'])
-            ->name('messages.replies.send');
-        Route::delete('pesan/{message}/balasan/{reply}', [ContactMessageController::class, 'destroyReply'])
-            ->name('messages.replies.destroy');
 
         // Pesanan + pembayaran (ditampilkan dalam satu daftar)
         Route::get('pesanan', [AdminOrderController::class, 'index'])->name('orders.index');

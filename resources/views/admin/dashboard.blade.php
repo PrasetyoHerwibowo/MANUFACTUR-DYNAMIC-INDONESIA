@@ -10,9 +10,6 @@
 
     $mesinAktifBar = $persen((int) $stats['mesin_aktif'], (int) $stats['mesin']);
     $kategoriAktifBar = $persen((int) $stats['kategori_aktif'], (int) $stats['kategori']);
-    $pesanBaruBar = $persen((int) $stats['pesan_baru'], (int) $stats['pesan']);
-
-    $pesanTerakhir = $recentMessages->first();
 
     /** Metrik performa konten pada bilah progres. */
     $metricBars = [
@@ -40,7 +37,7 @@
 @section('content')
     <div class="page active animate-fade-in" id="page-dashboard">
         {{-- Kartu statistik bergradasi --}}
-        <div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2">
             <div class="stat-card-gradient-1 transform rounded-2xl p-6 text-white shadow-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl">
                 <div class="mb-4 flex items-center justify-between">
                     <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur">
@@ -68,21 +65,8 @@
                     <div class="metric-bar h-full rounded-full bg-white/70" style="width: {{ $kategoriAktifBar }}%"></div>
                 </div>
             </div>
-
-            <div class="stat-card-gradient-3 transform rounded-2xl p-6 text-white shadow-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl">
-                <div class="mb-4 flex items-center justify-between">
-                    <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur">
-                        <i aria-hidden="true" class="fas fa-envelope text-2xl"></i>
-                    </div>
-                    <span class="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold backdrop-blur">{{ $stats['pesan_baru'] }} baru</span>
-                </div>
-                <h3 class="mb-1 text-3xl font-bold">{{ number_format($stats['pesan'], 0, ',', '.') }}</h3>
-                <p class="text-sm text-white/80">Pesan Masuk</p>
-                <div class="mt-4 h-1 overflow-hidden rounded-full bg-white/20">
-                    <div class="metric-bar h-full rounded-full bg-white/70" style="width: {{ $pesanBaruBar }}%"></div>
-                </div>
-            </div>
         </div>
+
         {{-- Kartu kaca ringkasan konten --}}
         <div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2">
             <div class="glass-card rounded-2xl p-6 transition-all duration-300 hover:shadow-xl">
@@ -99,54 +83,41 @@
 
             <div class="glass-card rounded-2xl p-6 transition-all duration-300 hover:shadow-xl">
                 <div class="flex items-center gap-4">
-                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-100 dark:bg-red-900/30">
-                        <i aria-hidden="true" class="fas fa-envelope-open-text text-xl text-red-600 dark:text-red-400"></i>
+                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-coffee-100 dark:bg-coffee-900/30">
+                        <i aria-hidden="true" class="fas fa-check-circle text-xl text-coffee-600 dark:text-coffee-400"></i>
                     </div>
                     <div class="min-w-0">
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Pesan Belum Dibaca</p>
-                        <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ number_format($stats['pesan_baru'], 0, ',', '.') }}</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Model Mesin Berfoto</p>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ number_format($stats['mesin_berfoto'], 0, ',', '.') }}</p>
                     </div>
                 </div>
             </div>
         </div>
-        {{-- Grafik --}}
+
+        {{-- Grafik donat kategori & aksi cepat --}}
         <div class="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
             <div class="glass-card rounded-2xl p-6 lg:col-span-2">
-                <div class="mb-6 flex items-start justify-between gap-4">
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Tren Pesan Masuk</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Enam bulan terakhir</p>
-                    </div>
-                    <span class="shrink-0 rounded-full bg-coffee-50 px-3 py-1 text-xs font-semibold text-coffee-700 dark:bg-coffee-900/30 dark:text-coffee-300">
-                        {{ number_format(array_sum($monthCounts), 0, ',', '.') }} pesan
-                    </span>
-                </div>
-
-                <div class="chart-container h-80">
-                    <canvas id="adminMessageChart"></canvas>
-                </div>
-            </div>
-
-            <div class="glass-card rounded-2xl p-6">
                 <h3 class="text-lg font-bold text-gray-900 dark:text-white">Model per Jenis Mesin</h3>
                 <p class="mb-6 text-sm text-gray-500 dark:text-gray-400">Enam jenis teratas</p>
 
                 @if ($categoryChart->sum('machines_count') > 0)
-                    <div class="chart-container h-48">
-                        <canvas id="adminCategoryChart"></canvas>
-                    </div>
+                    <div class="grid grid-cols-1 gap-6 md:grid-cols-2 items-center">
+                        <div class="chart-container h-52">
+                            <canvas id="adminCategoryChart"></canvas>
+                        </div>
 
-                    <div class="mt-6 space-y-2">
-                        @foreach ($categoryChart as $index => $kategori)
-                            @php $style = $categoryStyles[$index % count($categoryStyles)]; @endphp
-                            <div class="flex items-center justify-between rounded-lg p-3 {{ $style['tint'] }}">
-                                <div class="flex min-w-0 items-center gap-2">
-                                    <span class="h-3 w-3 shrink-0 rounded-full {{ $style['dot'] }}"></span>
-                                    <span class="truncate text-sm text-gray-600 dark:text-gray-300">{{ $kategori->name }}</span>
+                        <div class="space-y-2">
+                            @foreach ($categoryChart as $index => $kategori)
+                                @php $style = $categoryStyles[$index % count($categoryStyles)]; @endphp
+                                <div class="flex items-center justify-between rounded-lg p-3 {{ $style['tint'] }}">
+                                    <div class="flex min-w-0 items-center gap-2">
+                                        <span class="h-3 w-3 shrink-0 rounded-full {{ $style['dot'] }}"></span>
+                                        <span class="truncate text-sm text-gray-600 dark:text-gray-300">{{ $kategori->name }}</span>
+                                    </div>
+                                    <span class="ml-2 shrink-0 text-sm font-bold text-gray-900 dark:text-white">{{ $kategori->machines_count }}</span>
                                 </div>
-                                <span class="ml-2 shrink-0 text-sm font-bold text-gray-900 dark:text-white">{{ $kategori->machines_count }}</span>
-                            </div>
-                        @endforeach
+                            @endforeach
+                        </div>
                     </div>
                 @else
                     <div class="flex h-48 flex-col items-center justify-center gap-2 rounded-xl bg-gray-50 text-center dark:bg-gray-700/30">
@@ -158,59 +129,6 @@
                         </a>
                     </div>
                 @endif
-            </div>
-        </div>
-        {{-- Metrik performa konten --}}
-        <div class="glass-card mb-8 rounded-2xl p-6">
-            <div class="mb-6 flex items-center justify-between gap-4">
-                <div>
-                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">Metrik Performa Konten</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Kelengkapan data yang tampil di website</p>
-                </div>
-                <a href="{{ route('admin.machines.index') }}"
-                   class="shrink-0 text-sm font-semibold text-coffee-600 hover:text-coffee-700 dark:text-coffee-400">Kelola &rarr;</a>
-            </div>
-
-            <div class="space-y-5">
-                @foreach ($metricBars as $bar)
-                    @php $nilaiBar = $persen($bar['value'], $bar['total']); @endphp
-                    <div>
-                        <div class="mb-2 flex items-center justify-between text-sm">
-                            <span class="font-medium text-gray-600 dark:text-gray-400">{{ $bar['label'] }}</span>
-                            <span class="font-bold text-gray-900 dark:text-white">
-                                {{ $nilaiBar }}%
-                                <span class="ml-1 font-normal text-gray-400">({{ number_format($bar['value'], 0, ',', '.') }}/{{ number_format($bar['total'], 0, ',', '.') }})</span>
-                            </span>
-                        </div>
-                        <div class="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                            <div class="metric-bar h-full rounded-full bg-gradient-to-r {{ $bar['color'] }}" style="width: {{ $nilaiBar }}%"></div>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-        {{-- Model mesin terbaru --}}
-        @include('admin.partials.recent-machines')
-
-        {{-- Pesan terbaru & aksi cepat --}}
-        <div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <div class="glass-card rounded-2xl p-6 lg:col-span-2">
-                <div class="mb-6 flex items-center justify-between gap-4">
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Pesan Masuk Terbaru</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">
-                            @if ($pesanTerakhir)
-                                Terakhir dari {{ $pesanTerakhir->name }} &middot; {{ $pesanTerakhir->created_at->diffForHumans() }}
-                            @else
-                                Belum ada pesan dari pengunjung
-                            @endif
-                        </p>
-                    </div>
-                    <a href="{{ route('admin.messages.index') }}"
-                       class="shrink-0 text-sm font-semibold text-coffee-600 hover:text-coffee-700 dark:text-coffee-400">Lihat semua &rarr;</a>
-                </div>
-
-                @include('admin.partials.recent-messages')
             </div>
 
             <div class="glass-card rounded-2xl p-6">
@@ -243,6 +161,39 @@
                 </div>
             </div>
         </div>
+
+        {{-- Metrik performa konten --}}
+        <div class="glass-card mb-8 rounded-2xl p-6">
+            <div class="mb-6 flex items-center justify-between gap-4">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">Metrik Performa Konten</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Kelengkapan data yang tampil di website</p>
+                </div>
+                <a href="{{ route('admin.machines.index') }}"
+                   class="shrink-0 text-sm font-semibold text-coffee-600 hover:text-coffee-700 dark:text-coffee-400">Kelola &rarr;</a>
+            </div>
+
+            <div class="space-y-5">
+                @foreach ($metricBars as $bar)
+                    @php $nilaiBar = $persen($bar['value'], $bar['total']); @endphp
+                    <div>
+                        <div class="mb-2 flex items-center justify-between text-sm">
+                            <span class="font-medium text-gray-600 dark:text-gray-400">{{ $bar['label'] }}</span>
+                            <span class="font-bold text-gray-900 dark:text-white">
+                                {{ $nilaiBar }}%
+                                <span class="ml-1 font-normal text-gray-400">({{ number_format($bar['value'], 0, ',', '.') }}/{{ number_format($bar['total'], 0, ',', '.') }})</span>
+                            </span>
+                        </div>
+                        <div class="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                            <div class="metric-bar h-full rounded-full bg-gradient-to-r {{ $bar['color'] }}" style="width: {{ $nilaiBar }}%"></div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+        {{-- Model mesin terbaru --}}
+        @include('admin.partials.recent-machines')
     </div>
 @endsection
 
@@ -253,76 +204,14 @@
                 return;
             }
 
-            const tickColor = () => (document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280');
-            const gridColor = () => (document.documentElement.classList.contains('dark') ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)');
-
-            const monthLabels = @json($monthLabels);
-            const monthCounts = @json($monthCounts);
             const categoryLabels = @json($categoryChart->pluck('name'));
             const categoryCounts = @json($categoryChart->pluck('machines_count'));
             const categoryColors = @json($categoryColors);
 
-            let messageChart = null;
-            let categoryChart = null;
-
-            const messageCanvas = document.getElementById('adminMessageChart');
-
-            if (messageCanvas) {
-                const ctx = messageCanvas.getContext('2d');
-                const gradient = ctx.createLinearGradient(0, 0, 0, 320);
-                gradient.addColorStop(0, 'rgba(205, 102, 36, 0.35)');
-                gradient.addColorStop(1, 'rgba(205, 102, 36, 0.02)');
-
-                messageChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: monthLabels,
-                        datasets: [{
-                            label: 'Pesan masuk',
-                            data: monthCounts,
-                            borderColor: '#cd6624',
-                            backgroundColor: gradient,
-                            borderWidth: 3,
-                            tension: 0.4,
-                            fill: true,
-                            pointRadius: 6,
-                            pointHoverRadius: 8,
-                            pointBackgroundColor: '#cd6624',
-                            pointBorderColor: '#ffffff',
-                            pointBorderWidth: 2,
-                        }],
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                backgroundColor: 'rgba(17, 24, 39, 0.92)',
-                                padding: 12,
-                                cornerRadius: 10,
-                                displayColors: false,
-                            },
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: { precision: 0, color: tickColor() },
-                                grid: { color: gridColor() },
-                            },
-                            x: {
-                                ticks: { color: tickColor() },
-                                grid: { display: false },
-                            },
-                        },
-                    },
-                });
-            }
-
             const categoryCanvas = document.getElementById('adminCategoryChart');
 
             if (categoryCanvas && categoryCounts.length > 0) {
-                categoryChart = new Chart(categoryCanvas.getContext('2d'), {
+                new Chart(categoryCanvas.getContext('2d'), {
                     type: 'doughnut',
                     data: {
                         labels: categoryLabels,
@@ -348,18 +237,6 @@
                     },
                 });
             }
-
-            // Warna garis bantu disesuaikan saat tema terang/gelap ditukar.
-            window.onAdminThemeChange = function () {
-                if (!messageChart) {
-                    return;
-                }
-
-                messageChart.options.scales.y.grid.color = gridColor();
-                messageChart.options.scales.y.ticks.color = tickColor();
-                messageChart.options.scales.x.ticks.color = tickColor();
-                messageChart.update();
-            };
         });
     </script>
 @endpush

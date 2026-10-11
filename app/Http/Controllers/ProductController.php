@@ -34,8 +34,7 @@ class ProductController extends Controller
                 $query->where(function ($sub) use ($keyword) {
                     $sub->where('name', 'like', $keyword)
                         ->orWhere('model_code', 'like', $keyword)
-                        ->orWhere('function', 'like', $keyword)
-                        ->orWhere('short_description', 'like', $keyword);
+                        ->orWhere('function', 'like', $keyword);
                 });
             })
             ->ordered()

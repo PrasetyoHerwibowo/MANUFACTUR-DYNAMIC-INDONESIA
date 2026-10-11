@@ -72,11 +72,13 @@
                     </li>
                 @endif
                 @if ($company->phone)
-                    <li class="flex gap-2.5"><span
-                            class="text-red-600 dark:text-red-500"><span
-                            class="mt-1 flex h-5 w-5 shrink-0 items-center justify-center text-lg text-red-600 dark:text-red-500">
+                    <li class="flex gap-2.5">
+                        <span class="mt-1 flex h-5 w-5 shrink-0 items-center justify-center text-lg text-red-600 dark:text-red-500">
                             <i class="fa-solid fa-phone"></i>
-                        </span></span><span>{{ $company->phone }}</span></li>
+                        </span>
+                        <a href="tel:{{ preg_replace('/[^0-9+]/', '', $company->phone) }}"
+                            class="transition hover:text-red-600 dark:hover:text-red-400">{{ $company->phone }}</a>
+                    </li>
                 @endif
                 @if ($whatsapp)
                     <li class="flex gap-2.5">

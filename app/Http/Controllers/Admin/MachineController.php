@@ -19,7 +19,6 @@ class MachineController extends Controller
         'name'             => 100,
         'model_code'       => 50,
         'function'         => 375,
-        'short_description'=> 150,
         // Nilai di bawah adalah panjang string gabungan yang digenerate, bukan input langsung.
         // capacity:  "99999999 kg/999 jam" = 20 char  → 30 aman
         // power:     "9999.99 kW / 99 phase" = 22 char → 30 aman
@@ -29,7 +28,6 @@ class MachineController extends Controller
         'power'            => 30,
         'dimension'        => 40,
         'weight'           => 15,
-        'material'         => 100,
         'specifications'   => 375,
         'description'      => 500,
     ];
@@ -186,7 +184,6 @@ class MachineController extends Controller
             'name' => $this->trimmed($request->input('name')),
             'model_code' => $this->trimmed($request->input('model_code')),
             'function' => $this->trimmed($request->input('function')),
-            'short_description' => $this->trimmed($request->input('short_description')),
             'capacity_amount' => $capacityAmount,
             'capacity_time' => $capacityTime,
             'capacity' => $capacity,
@@ -199,7 +196,6 @@ class MachineController extends Controller
             'dimension' => $dimension,
             'weight_amount' => $weightAmount,
             'weight' => $weight,
-            'material' => $this->trimmed($request->input('material')),
             'specifications' => $this->trimmed($request->input('specifications')),
             'description' => $this->trimmed($request->input('description')),
         ]);
@@ -217,7 +213,6 @@ class MachineController extends Controller
                 $this->uniqueRules('model_code', $categoryId, $machine, $request->input('model_code')),
             ),
             'function' => ['nullable', 'string', 'max:'.self::LENGTHS['function']],
-            'short_description' => ['nullable', 'string', 'max:'.self::LENGTHS['short_description']],
             'capacity_amount' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
             'capacity_time' => ['nullable', 'integer', 'min:1', 'max:999'],
             'capacity' => ['nullable', 'string', 'max:'.self::LENGTHS['capacity']],
@@ -230,7 +225,6 @@ class MachineController extends Controller
             'dimension' => ['nullable', 'string', 'max:'.self::LENGTHS['dimension']],
             'weight_amount' => ['nullable', 'numeric', 'min:0', 'max:999999'],
             'weight' => ['nullable', 'string', 'max:'.self::LENGTHS['weight']],
-            'material' => ['nullable', 'string', 'max:'.self::LENGTHS['material']],
             'specifications' => ['nullable', 'string', 'max:'.self::LENGTHS['specifications']],
             'description' => ['nullable', 'string', 'max:'.self::LENGTHS['description']],
             'main_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:6144'],
@@ -293,7 +287,6 @@ class MachineController extends Controller
             'model_code.max' => 'Kode / tipe model maksimal '.self::LENGTHS['model_code'].' karakter.',
             'model_code.unique' => 'Kode model ":input" sudah dipakai model mesin lain pada jenis mesin yang sama.',
             'function.max' => 'Fungsi mesin maksimal '.self::LENGTHS['function'].' karakter.',
-            'short_description.max' => 'Deskripsi singkat maksimal '.self::LENGTHS['short_description'].' karakter.',
             'capacity_amount.numeric' => 'Kapasitas (kg) harus berupa angka.',
             'capacity_amount.min' => 'Kapasitas (kg) tidak boleh kurang dari 0.',
             'capacity_amount.max' => 'Kapasitas (kg) maksimal 99.999.999 kg.',
@@ -322,7 +315,6 @@ class MachineController extends Controller
             'weight_amount.min' => 'Berat (kg) tidak boleh kurang dari 0.',
             'weight_amount.max' => 'Berat (kg) maksimal 999.999 kg.',
             'weight.max' => 'Berat maksimal '.self::LENGTHS['weight'].' karakter.',
-            'material.max' => 'Material maksimal '.self::LENGTHS['material'].' karakter.',
             'specifications.max' => 'Spesifikasi tambahan maksimal '.self::LENGTHS['specifications'].' karakter.',
             'description.max' => 'Deskripsi lengkap maksimal '.self::LENGTHS['description'].' karakter.',
             'main_image.image' => 'Foto mesin harus berupa berkas gambar.',

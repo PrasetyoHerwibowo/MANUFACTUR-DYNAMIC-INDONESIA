@@ -46,6 +46,15 @@ class CompanyProfile extends Model
         'city' => 'Malang, Jawa Timur',
     ];
 
+    public function getPhoneAttribute(?string $value): ?string
+    {
+        if (filled($value)) {
+            return $value;
+        }
+
+        return \App\Models\User::query()->whereNotNull('phone')->value('phone');
+    }
+
     public function logoUrl(): ?string
     {
         return $this->logo ? \App\Support\ImageUploader::url($this->logo) : null;

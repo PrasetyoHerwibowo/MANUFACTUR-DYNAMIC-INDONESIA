@@ -39,10 +39,6 @@
                 <x-admin.textarea name="function" label="Fungsi mesin" :value="$machine->function" :rows="3"
                                   maxlength="375"
                                   hint="Maksimal 375 karakter. Jelaskan kegunaan mesin ini dalam proses pengolahan." />
-
-                <x-admin.textarea name="short_description" label="Deskripsi singkat" :value="$machine->short_description" :rows="2"
-                                  maxlength="150"
-                                  hint="Maksimal 150 karakter. Muncul pada kartu produk di halaman daftar produk." />
             </div>
 
             {{-- Spesifikasi --}}
@@ -105,9 +101,6 @@
                                    oninput="if(this.value.length>this.maxLength)this.value=this.value.slice(0,this.maxLength);"
                                    :value="$machine->weight_amount" placeholder="320"
                                    hint="Hanya angka, titik (.) untuk desimal. Maks. 8 karakter." />
-
-                    <x-admin.input name="material" label="Material" :value="$machine->material" maxlength="100"
-                                   placeholder="Stainless steel 304" hint="Maksimal 100 karakter." />
                 </div>
 
                 <x-admin.textarea name="specifications" label="Spesifikasi tambahan" :value="$machine->specifications" :rows="5"

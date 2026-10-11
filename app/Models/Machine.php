@@ -18,14 +18,12 @@ class Machine extends Model
         'slug',
         'model_code',
         'function',
-        'short_description',
         'description',
         'specifications',
         'capacity',
         'power',
         'dimension',
         'weight',
-        'material',
         'main_image',
         'is_featured',
         'is_active',
@@ -241,19 +239,6 @@ class Machine extends Model
     public function specificationLines(): array
     {
         $lines = [];
-        $structured = [
-            'Kapasitas' => $this->capacity,
-            'Daya' => $this->power,
-            'Dimensi' => $this->dimension,
-            'Berat' => $this->weight,
-            'Material' => $this->material,
-        ];
-
-        foreach ($structured as $label => $value) {
-            if (filled($value)) {
-                $lines[$label] = $value;
-            }
-        }
 
         foreach (preg_split('/\r\n|\r|\n/', (string) $this->specifications) as $line) {
             if (! filled(trim($line))) {

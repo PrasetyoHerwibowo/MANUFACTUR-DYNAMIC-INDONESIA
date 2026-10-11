@@ -23,7 +23,7 @@
             {{ $machine->name }}
         </h3>
 
-        @php $preview = $machine->short_description ?: $machine->function; @endphp
+        @php $preview = $machine->function; @endphp
         @if ($preview)
             <p class="mt-2 flex-1 text-sm leading-relaxed text-stone-500 dark:text-gray-400">
                 {{ \Illuminate\Support\Str::limit(strip_tags($preview), 120) }}

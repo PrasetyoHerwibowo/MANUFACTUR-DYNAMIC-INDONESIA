@@ -42,6 +42,15 @@ class AccountController extends Controller
 
         $user->update($validated);
 
+        // Sinkronkan nomor telepon ke profil perusahaan jika diisi / diubah di pengaturan akun
+        if (array_key_exists('phone', $validated)) {
+            $company = \App\Models\CompanyProfile::first();
+            if ($company) {
+                $company->update(['phone' => $validated['phone']]);
+                \App\Support\Site::flush();
+            }
+        }
+
         return redirect()
             ->route('admin.account.edit')
             ->with('success', 'Data akun berhasil diperbarui.');
