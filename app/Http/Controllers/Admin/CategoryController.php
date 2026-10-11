@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Support\ImageUploader;
 use App\Support\Sanitize;
+use App\Support\Site;
 use App\Support\Slug;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -68,6 +69,7 @@ class CategoryController extends Controller
         $validated['sort_order'] = (int) Category::query()->max('sort_order') + 1;
 
         Category::create($validated);
+        Site::flushPublicCache();
 
         return redirect()
             ->route('admin.categories.index')
@@ -92,6 +94,7 @@ class CategoryController extends Controller
         $validated['is_active'] = true;
 
         $category->update($validated);
+        Site::flushPublicCache();
 
         return redirect()
             ->route('admin.categories.index')
@@ -109,6 +112,7 @@ class CategoryController extends Controller
         }
 
         $category->delete();
+        Site::flushPublicCache();
 
         return redirect()
             ->route('admin.categories.index')

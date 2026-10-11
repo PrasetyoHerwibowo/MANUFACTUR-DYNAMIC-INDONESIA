@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Machine;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class ProductController extends Controller
 {
@@ -14,11 +15,13 @@ class ProductController extends Controller
      */
     public function index(Request $request): View
     {
-        $categories = Category::query()
-            ->active()
-            ->ordered()
-            ->withCount(['machines' => fn ($query) => $query->where('is_active', true)])
-            ->get();
+        $categories = Cache::remember('products_categories', 1800, function () {
+            return Category::query()
+                ->active()
+                ->ordered()
+                ->withCount(['machines' => fn ($query) => $query->where('is_active', true)])
+                ->get();
+        });
 
         $activeCategory = null;
 
@@ -57,7 +60,7 @@ class ProductController extends Controller
             ->active()
             ->where('category_id', $machine->category_id)
             ->whereKeyNot($machine->getKey())
-            ->with('images')
+            ->with(['category', 'images'])
             ->ordered()
             ->take(3)
             ->get();

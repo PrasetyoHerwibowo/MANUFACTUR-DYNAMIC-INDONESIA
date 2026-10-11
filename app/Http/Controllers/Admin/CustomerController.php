@@ -12,6 +12,7 @@ use App\Support\Reference;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Pelanggan yang terdaftar beserta riwayat pesanannya.
@@ -44,12 +45,20 @@ class CustomerController extends Controller
             ->paginate(12)
             ->withQueryString();
 
-        $stats = [
-            'total' => Customer::query()->count(),
-            'baru' => Customer::query()->where('created_at', '>=', now()->startOfMonth())->count(),
-            'berpesanan' => Customer::query()->has('orders')->count(),
-            'nilai_lunas' => (float) Payment::query()->where('status', Payment::STATUS_LUNAS)->sum('amount'),
-        ];
+        $stats = Cache::remember('admin_customers_stats', 300, function () {
+            $customerCounts = Customer::query()
+                ->selectRaw('COUNT(*) as total, COUNT(CASE WHEN created_at >= ? THEN 1 END) as baru, COUNT(CASE WHEN EXISTS (SELECT 1 FROM orders WHERE orders.customer_id = customers.id) THEN 1 END) as berpesanan', [now()->startOfMonth()])
+                ->first();
+
+            $nilaiLunas = (float) Payment::query()->where('status', Payment::STATUS_LUNAS)->sum('amount');
+
+            return [
+                'total' => (int) ($customerCounts->total ?? 0),
+                'baru' => (int) ($customerCounts->baru ?? 0),
+                'berpesanan' => (int) ($customerCounts->berpesanan ?? 0),
+                'nilai_lunas' => $nilaiLunas,
+            ];
+        });
 
         return view('admin.customers.index', compact('customers', 'stats'));
     }

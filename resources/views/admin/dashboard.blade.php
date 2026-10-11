@@ -30,10 +30,6 @@
     ];
 @endphp
 
-@push('head')
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-@endpush
-
 @section('content')
     <div class="page active animate-fade-in" id="page-dashboard">
         {{-- Kartu statistik bergradasi --}}
@@ -198,45 +194,51 @@
 @endsection
 
 @push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            if (typeof Chart === 'undefined') {
-                return;
-            }
+            function initCategoryChart() {
+                if (typeof Chart === 'undefined') {
+                    setTimeout(initCategoryChart, 50);
+                    return;
+                }
 
-            const categoryLabels = @json($categoryChart->pluck('name'));
-            const categoryCounts = @json($categoryChart->pluck('machines_count'));
-            const categoryColors = @json($categoryColors);
+                const categoryLabels = @json($categoryChart->pluck('name'));
+                const categoryCounts = @json($categoryChart->pluck('machines_count'));
+                const categoryColors = @json($categoryColors);
 
-            const categoryCanvas = document.getElementById('adminCategoryChart');
+                const categoryCanvas = document.getElementById('adminCategoryChart');
 
-            if (categoryCanvas && categoryCounts.length > 0) {
-                new Chart(categoryCanvas.getContext('2d'), {
-                    type: 'doughnut',
-                    data: {
-                        labels: categoryLabels,
-                        datasets: [{
-                            data: categoryCounts,
-                            backgroundColor: categoryColors.slice(0, categoryCounts.length),
-                            borderWidth: 0,
-                            hoverOffset: 8,
-                        }],
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        cutout: '75%',
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                backgroundColor: 'rgba(17, 24, 39, 0.92)',
-                                padding: 12,
-                                cornerRadius: 10,
+                if (categoryCanvas && categoryCounts.length > 0) {
+                    new Chart(categoryCanvas.getContext('2d'), {
+                        type: 'doughnut',
+                        data: {
+                            labels: categoryLabels,
+                            datasets: [{
+                                data: categoryCounts,
+                                backgroundColor: categoryColors.slice(0, categoryCounts.length),
+                                borderWidth: 0,
+                                hoverOffset: 8,
+                            }],
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            cutout: '75%',
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    backgroundColor: 'rgba(17, 24, 39, 0.92)',
+                                    padding: 12,
+                                    cornerRadius: 10,
+                                },
                             },
                         },
-                    },
-                });
+                    });
+                }
             }
+
+            initCategoryChart();
         });
     </script>
 @endpush

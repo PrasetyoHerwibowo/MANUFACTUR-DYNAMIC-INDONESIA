@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Machine;
 use App\Support\ImageUploader;
+use App\Support\Site;
 use App\Support\Slug;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -38,7 +39,7 @@ class MachineController extends Controller
     public function index(Request $request): View
     {
         $machines = Machine::query()
-            ->with('category')
+            ->with(['category', 'images'])
             ->when($request->filled('kategori'), fn ($query) => $query->where('category_id', $request->integer('kategori')))
             ->when($request->filled('q'), function ($query) use ($request) {
                 $keyword = '%'.$request->string('q').'%';
@@ -79,6 +80,7 @@ class MachineController extends Controller
         $validated['is_active'] = true;
 
         Machine::create($validated);
+        Site::flushPublicCache();
 
         return redirect()
             ->route('admin.machines.index')
@@ -109,6 +111,7 @@ class MachineController extends Controller
         $validated['is_active'] = true;
 
         $machine->update($validated);
+        Site::flushPublicCache();
 
         return redirect()
             ->route('admin.machines.index')
@@ -124,6 +127,7 @@ class MachineController extends Controller
         }
 
         $machine->delete();
+        Site::flushPublicCache();
 
         return redirect()
             ->route('admin.machines.index')

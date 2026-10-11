@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Cache;
 
 class PageController extends Controller
 {
@@ -12,11 +13,13 @@ class PageController extends Controller
      */
     public function about(): View
     {
-        $categories = Category::query()
-            ->active()
-            ->ordered()
-            ->withCount(['machines' => fn ($query) => $query->where('is_active', true)])
-            ->get();
+        $categories = Cache::remember('products_categories', 1800, function () {
+            return Category::query()
+                ->active()
+                ->ordered()
+                ->withCount(['machines' => fn ($query) => $query->where('is_active', true)])
+                ->get();
+        });
 
         return view('public.about', compact('categories'));
     }

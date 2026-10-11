@@ -36,7 +36,7 @@
     ];
 
     $currentUser = auth()->user();
-    $pendingPayments = \App\Models\Payment::query()->pending()->count();
+    $pendingPayments = \Illuminate\Support\Facades\Cache::remember('admin_pending_payments_count', 60, fn () => \App\Models\Payment::query()->pending()->count());
 
     /** Jumlah notifikasi pada sebuah item menu. */
     $badgeCount = fn (array $item): int => match ($item['badge'] ?? null) {
@@ -57,7 +57,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" rel="stylesheet">
     {{-- Font Awesome: ikon panel admin mengikuti tampilan Eiko Coffee Roaster. --}}
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 

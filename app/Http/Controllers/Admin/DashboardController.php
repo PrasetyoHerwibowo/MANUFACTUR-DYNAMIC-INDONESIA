@@ -7,33 +7,50 @@ use App\Models\Category;
 use App\Models\Machine;
 use App\Models\MachineImage;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
     public function index(): View
     {
-        $stats = [
-            'kategori' => Category::query()->count(),
-            'kategori_aktif' => Category::query()->active()->count(),
-            'mesin' => Machine::query()->count(),
-            'mesin_aktif' => Machine::query()->active()->count(),
-            'mesin_berfoto' => Machine::query()->has('images')->count(),
-            'foto' => MachineImage::query()->count(),
-        ];
+        $stats = Cache::remember('admin_dashboard_stats', 300, function () {
+            $categoryStats = Category::query()
+                ->selectRaw('COUNT(*) as total, COUNT(CASE WHEN is_active = true THEN 1 END) as active')
+                ->first();
 
-        $recentMachines = Machine::query()
-            ->with('category')
-            ->latest()
-            ->take(5)
-            ->get();
+            $machineStats = Machine::query()
+                ->selectRaw("COUNT(*) as total, COUNT(CASE WHEN is_active = true THEN 1 END) as active, COUNT(CASE WHEN (main_image IS NOT NULL AND main_image != '') OR EXISTS (SELECT 1 FROM machine_images WHERE machine_images.machine_id = machines.id) THEN 1 END) as berfoto")
+                ->first();
 
-        /** Distribusi model mesin per jenis mesin untuk grafik donat. */
-        $categoryChart = Category::query()
-            ->withCount('machines')
-            ->orderByDesc('machines_count')
-            ->orderBy('name')
-            ->take(6)
-            ->get();
+            $photoCount = MachineImage::query()->count();
+
+            return [
+                'kategori' => (int) ($categoryStats->total ?? 0),
+                'kategori_aktif' => (int) ($categoryStats->active ?? 0),
+                'mesin' => (int) ($machineStats->total ?? 0),
+                'mesin_aktif' => (int) ($machineStats->active ?? 0),
+                'mesin_berfoto' => (int) ($machineStats->berfoto ?? 0),
+                'foto' => (int) $photoCount,
+            ];
+        });
+
+        $recentMachines = Cache::remember('admin_dashboard_recent_machines', 300, function () {
+            return Machine::query()
+                ->with(['category', 'images'])
+                ->latest('id')
+                ->take(5)
+                ->get();
+        });
+
+        /** Distribusi model mesin per jenis mesin untuk grafik donat (dicache 5 menit). */
+        $categoryChart = Cache::remember('admin_dashboard_category_chart', 300, function () {
+            return Category::query()
+                ->withCount('machines')
+                ->orderByDesc('machines_count')
+                ->orderBy('name')
+                ->take(6)
+                ->get();
+        });
 
         return view('admin.dashboard', compact(
             'stats',

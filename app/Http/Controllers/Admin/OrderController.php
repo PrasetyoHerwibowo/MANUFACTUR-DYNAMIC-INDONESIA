@@ -13,6 +13,7 @@ use App\Support\Sanitize;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
@@ -38,8 +39,10 @@ class OrderController extends Controller
      */
     public function index(Request $request): View
     {
-        // Pembayaran yang melewati batas waktu langsung ditandai gagal.
-        Payment::expireOverdue();
+        // Pembayaran yang melewati batas waktu diperiksa secara berkala (dibatasi 2 menit).
+        Cache::remember('admin_payments_last_expired_check', 120, function () {
+            return Payment::expireOverdue();
+        });
 
         $status = $request->string('status')->toString();
         $method = $request->string('metode')->toString();
@@ -69,14 +72,30 @@ class OrderController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $stats = [
-            'total' => Order::query()->count(),
-            'menunggu' => Order::query()->where('status', Order::STATUS_MENUNGGU_PEMBAYARAN)->count(),
-            'lunas' => Order::query()->where('status', Order::STATUS_LUNAS)->count(),
-            'gagal' => Order::query()->where('status', Order::STATUS_GAGAL)->count(),
-            'nilai_menunggu' => (float) Payment::query()->pending()->sum('amount'),
-            'nilai_lunas' => (float) Payment::query()->where('status', Payment::STATUS_LUNAS)->sum('amount'),
-        ];
+        $stats = Cache::remember('admin_orders_stats', 300, function () {
+            $orderCounts = Order::query()
+                ->selectRaw("COUNT(*) as total,
+                    COUNT(CASE WHEN status = ? THEN 1 END) as menunggu,
+                    COUNT(CASE WHEN status = ? THEN 1 END) as lunas,
+                    COUNT(CASE WHEN status = ? THEN 1 END) as gagal",
+                    [Order::STATUS_MENUNGGU_PEMBAYARAN, Order::STATUS_LUNAS, Order::STATUS_GAGAL])
+                ->first();
+
+            $paymentSums = Payment::query()
+                ->selectRaw("SUM(CASE WHEN status = ? THEN amount ELSE 0 END) as nilai_menunggu,
+                    SUM(CASE WHEN status = ? THEN amount ELSE 0 END) as nilai_lunas",
+                    [Payment::STATUS_MENUNGGU, Payment::STATUS_LUNAS])
+                ->first();
+
+            return [
+                'total' => (int) ($orderCounts->total ?? 0),
+                'menunggu' => (int) ($orderCounts->menunggu ?? 0),
+                'lunas' => (int) ($orderCounts->lunas ?? 0),
+                'gagal' => (int) ($orderCounts->gagal ?? 0),
+                'nilai_menunggu' => (float) ($paymentSums->nilai_menunggu ?? 0),
+                'nilai_lunas' => (float) ($paymentSums->nilai_lunas ?? 0),
+            ];
+        });
 
         return view('admin.orders.index', [
             'orders' => $orders,
