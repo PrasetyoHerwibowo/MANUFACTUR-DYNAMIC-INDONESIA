@@ -11,17 +11,23 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
- * Pesanan mesin dari pelanggan beserta status pembayarannya.
+ * Pesanan mesin dari pelanggan beserta status pembayarannya dan timeline manufaktur.
  */
 class Order extends Model
 {
     public const STATUS_MENUNGGU_PEMBAYARAN = 'menunggu_pembayaran';
-
     public const STATUS_LUNAS = 'lunas';
-
     public const STATUS_GAGAL = 'gagal';
-
     public const STATUS_DIBATALKAN = 'dibatalkan';
+
+    // 7 Tahap Timeline Produksi Manufaktur
+    public const STAGE_VERIFIKASI_DP = 'verifikasi_dp';
+    public const STAGE_PERSIAPAN_BAHAN = 'persiapan_bahan';
+    public const STAGE_PROSES_PRODUKSI = 'proses_produksi';
+    public const STAGE_QUALITY_CONTROL = 'quality_control';
+    public const STAGE_MENUNGGU_PELUNASAN = 'menunggu_pelunasan';
+    public const STAGE_PENGIRIMAN_INSTALASI = 'pengiriman_instalasi';
+    public const STAGE_AFTER_SALES = 'after_sales_service';
 
     /** Batas waktu pembayaran (dalam jam) sejak kode pembayaran dibuat. */
     public const PAYMENT_WINDOW_HOURS = 12;
@@ -30,7 +36,14 @@ class Order extends Model
         'customer_id',
         'order_code',
         'total_amount',
+        'dp_amount',
+        'pelunasan_amount',
         'status',
+        'production_status',
+        'dp_proof',
+        'pelunasan_proof',
+        'delivery_address',
+        'custom_notes',
         'payment_deadline',
         'paid_at',
         'notes',
@@ -38,18 +51,18 @@ class Order extends Model
 
     protected $casts = [
         'total_amount' => 'decimal:2',
+        'dp_amount' => 'decimal:2',
+        'pelunasan_amount' => 'decimal:2',
         'payment_deadline' => 'datetime',
         'paid_at' => 'datetime',
     ];
 
-    /**
-     * Nilai default saat pesanan baru dibuat.
-     *
-     * @var array<string, mixed>
-     */
     protected $attributes = [
         'status' => self::STATUS_MENUNGGU_PEMBAYARAN,
+        'production_status' => self::STAGE_VERIFIKASI_DP,
         'total_amount' => 0,
+        'dp_amount' => 0,
+        'pelunasan_amount' => 0,
     ];
 
     public function customer(): BelongsTo
@@ -67,17 +80,11 @@ class Order extends Model
         return $this->hasMany(Payment::class);
     }
 
-    /**
-     * Pembayaran terakhir yang dibuat untuk pesanan ini.
-     */
     public function latestPayment(): HasOne
     {
         return $this->hasOne(Payment::class)->latestOfMany();
     }
 
-    /**
-     * @return array<string, string>
-     */
     public static function statusLabels(): array
     {
         return [
@@ -88,10 +95,29 @@ class Order extends Model
         ];
     }
 
+    public static function productionStageLabels(): array
+    {
+        return [
+            self::STAGE_VERIFIKASI_DP => '1. Verifikasi DP',
+            self::STAGE_PERSIAPAN_BAHAN => '2. Persiapan Bahan Baku',
+            self::STAGE_PROSES_PRODUKSI => '3. Proses Produksi / Assembly',
+            self::STAGE_QUALITY_CONTROL => '4. Quality Control (QC)',
+            self::STAGE_MENUNGGU_PELUNASAN => '5. Menunggu Pelunasan',
+            self::STAGE_PENGIRIMAN_INSTALASI => '6. Pengiriman & Instalasi',
+            self::STAGE_AFTER_SALES => '7. After-Sales Service (Layanan Purna Jual)',
+        ];
+    }
+
     public function statusLabel(): string
     {
         return self::statusLabels()[$this->status]
             ?? ucfirst(str_replace('_', ' ', (string) $this->status));
+    }
+
+    public function productionStageLabel(): string
+    {
+        return self::productionStageLabels()[$this->production_status]
+            ?? ucfirst(str_replace('_', ' ', (string) $this->production_status));
     }
 
     public function scopeStatus(Builder $query, ?string $status): Builder
@@ -99,9 +125,6 @@ class Order extends Model
         return $query->when(filled($status), fn (Builder $sub) => $sub->where('status', $status));
     }
 
-    /**
-     * Pembayaran yang masih menunggu (belum lunas / gagal).
-     */
     public function pendingPayment(): ?Payment
     {
         return $this->payments()
@@ -110,13 +133,6 @@ class Order extends Model
             ->first();
     }
 
-    /**
-     * Buat kode pembayaran baru.
-     *
-     * Dipakai saat pesanan dibuat maupun ketika pelanggan harus mengulang
-     * pembayaran dari awal setelah pembayaran sebelumnya gagal / kedaluwarsa:
-     * kode pembayaran, percobaan, dan batas waktunya dimulai ulang.
-     */
     public function createPayment(
         string $method,
         ?CarbonInterface $expiresAt = null,
@@ -127,7 +143,7 @@ class Order extends Model
             'payment_code' => Reference::make(Reference::PAYMENT, Payment::class, 'payment_code'),
             'attempt' => $this->payments()->count() + 1,
             'method' => $method,
-            'amount' => $amount ?? (float) $this->total_amount,
+            'amount' => $amount ?? (float) ($this->dp_amount > 0 ? $this->dp_amount : $this->total_amount),
             'status' => Payment::STATUS_MENUNGGU,
             'expires_at' => $expiresAt ?? now()->addHours(self::PAYMENT_WINDOW_HOURS),
             'notes' => $notes,
@@ -142,9 +158,6 @@ class Order extends Model
         return $payment;
     }
 
-    /**
-     * Selaraskan status pesanan dengan seluruh pembayaran yang tercatat.
-     */
     public function syncStatusFromPayments(): void
     {
         $paid = $this->payments()->where('status', Payment::STATUS_LUNAS)->latest('paid_at')->first();
