@@ -7,8 +7,11 @@ use App\Models\User;
 use App\Models\Customer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Throwable;
 
 class AuthController extends Controller
 {
@@ -25,38 +28,57 @@ class AuthController extends Controller
             'phone' => ['nullable', 'string', 'max:50'],
         ]);
 
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'phone' => $validated['phone'] ?? null,
-            'password' => Hash::make($validated['password']),
-        ]);
+        try {
+            $result = DB::transaction(function () use ($validated) {
+                $user = User::create([
+                    'name' => $validated['name'],
+                    'email' => $validated['email'],
+                    'phone' => $validated['phone'] ?? null,
+                    'password' => Hash::make($validated['password']),
+                ]);
 
-        // Auto create or associate Customer profile
-        $customer = Customer::create([
-            'customer_code' => 'CUST-' . strtoupper(substr(uniqid(), -6)),
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'phone' => $validated['phone'] ?? '-',
-            'company' => $validated['company'] ?? 'Perusahaan Kopi / Mitra',
-            'address' => '-',
-        ]);
+                // Auto create or associate Customer profile
+                $customer = Customer::create([
+                    'customer_code' => 'CUST-' . strtoupper(substr(uniqid(), -6)),
+                    'name' => $validated['name'],
+                    'email' => $validated['email'],
+                    'phone' => !empty($validated['phone']) ? $validated['phone'] : null,
+                    'company' => $validated['company'] ?? 'Perusahaan Kopi / Mitra',
+                    'address' => '-',
+                ]);
 
-        $token = $user->createToken('manufaktur-mobile')->plainTextToken;
+                $token = $user->createToken('manufaktur-mobile')->plainTextToken;
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Registrasi akun berhasil',
-            'token' => $token,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'company' => $customer->company,
-                'customer_id' => $customer->id,
-            ],
-        ], 201);
+                return [$user, $customer, $token];
+            });
+
+            [$user, $customer, $token] = $result;
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Registrasi akun berhasil',
+                'token' => $token,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'company' => $customer->company,
+                    'customer_id' => $customer->id,
+                ],
+            ], 201);
+        } catch (Throwable $e) {
+            Log::error('AuthController register error: ' . $e->getMessage(), [
+                'email' => $validated['email'],
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal melakukan pendaftaran akun. Silakan coba lagi nanti.',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
     }
 
     /**
@@ -69,32 +91,45 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        $user = User::where('email', $validated['email'])->first();
+        try {
+            $user = User::where('email', $validated['email'])->first();
 
-        if (! $user || ! Hash::check($validated['password'], $user->password)) {
+            if (! $user || ! Hash::check($validated['password'], $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Email atau password yang Anda masukkan salah',
+                ], 401);
+            }
+
+            $customer = Customer::where('email', $user->email)->first();
+
+            $token = $user->createToken('manufaktur-mobile')->plainTextToken;
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Login berhasil',
+                'token' => $token,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'company' => $customer?->company ?? 'PT Kopi Nusantara Jaya',
+                    'customer_id' => $customer?->id,
+                ],
+            ]);
+        } catch (Throwable $e) {
+            Log::error('AuthController login error: ' . $e->getMessage(), [
+                'email' => $validated['email'],
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Email atau password yang Anda masukkan salah',
-            ], 401);
+                'message' => 'Terjadi kesalahan saat masuk akun.',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
         }
-
-        $customer = Customer::where('email', $user->email)->first();
-
-        $token = $user->createToken('manufaktur-mobile')->plainTextToken;
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Login berhasil',
-            'token' => $token,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'company' => $customer?->company ?? 'PT Kopi Nusantara Jaya',
-                'customer_id' => $customer?->id,
-            ],
-        ]);
     }
 
     /**
@@ -113,63 +148,81 @@ class AuthController extends Controller
             'provider_id' => ['nullable', 'string'],
         ]);
 
-        $email = strtolower(trim($validated['email']));
-        $providerName = ucfirst($validated['provider']);
+        try {
+            $email = strtolower(trim($validated['email']));
+            $providerName = ucfirst($validated['provider']);
 
-        // Check if user already exists
-        $user = User::where('email', $email)->first();
-        $isNewUser = false;
+            $result = DB::transaction(function () use ($validated, $email, $providerName) {
+                $user = User::where('email', $email)->first();
+                $isNewUser = false;
 
-        if (! $user) {
-            $isNewUser = true;
-            $user = User::create([
-                'name' => $validated['name'],
-                'email' => $email,
-                'phone' => $validated['phone'] ?? null,
-                'avatar' => $validated['avatar'] ?? null,
-                'password' => Hash::make(Str::random(32)),
+                if (! $user) {
+                    $isNewUser = true;
+                    $user = User::create([
+                        'name' => $validated['name'],
+                        'email' => $email,
+                        'phone' => $validated['phone'] ?? null,
+                        'avatar' => $validated['avatar'] ?? null,
+                        'password' => Hash::make(Str::random(32)),
+                    ]);
+                }
+
+                // Find or create customer corporate profile
+                $customer = Customer::where('email', $email)->first();
+                if (! $customer) {
+                    $companyName = ! empty($validated['company']) 
+                        ? $validated['company'] 
+                        : $this->inferCompanyNameFromEmail($email, $validated['name']);
+
+                    $customer = Customer::create([
+                        'customer_code' => 'SSO-' . strtoupper(substr(uniqid(), -6)),
+                        'name' => $validated['name'],
+                        'email' => $email,
+                        'phone' => !empty($validated['phone']) ? $validated['phone'] : null,
+                        'company' => $companyName,
+                        'address' => '-',
+                    ]);
+                }
+
+                $token = $user->createToken('manufaktur-mobile-sso')->plainTextToken;
+
+                return [$user, $customer, $token, $isNewUser];
+            });
+
+            [$user, $customer, $token, $isNewUser] = $result;
+
+            return response()->json([
+                'success' => true,
+                'message' => $isNewUser 
+                    ? "Registrasi & login via $providerName SSO berhasil" 
+                    : "Login via $providerName SSO berhasil",
+                'is_new_user' => $isNewUser,
+                'provider' => $validated['provider'],
+                'token' => $token,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'avatar' => $user->avatar,
+                    'company' => $customer->company,
+                    'customer_id' => $customer->id,
+                    'auth_type' => 'sso',
+                    'sso_provider' => $validated['provider'],
+                ],
+            ], $isNewUser ? 201 : 200);
+        } catch (Throwable $e) {
+            Log::error('AuthController SSO error: ' . $e->getMessage(), [
+                'email' => $validated['email'] ?? null,
+                'trace' => $e->getTraceAsString(),
             ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memproses Single Sign-On (SSO). Silakan coba kembali.',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
         }
-
-        // Find or create customer corporate profile
-        $customer = Customer::where('email', $email)->first();
-        if (! $customer) {
-            $companyName = ! empty($validated['company']) 
-                ? $validated['company'] 
-                : $this->inferCompanyNameFromEmail($email, $validated['name']);
-
-            $customer = Customer::create([
-                'customer_code' => 'SSO-' . strtoupper(substr(uniqid(), -6)),
-                'name' => $validated['name'],
-                'email' => $email,
-                'phone' => $validated['phone'] ?? '-',
-                'company' => $companyName,
-                'address' => '-',
-            ]);
-        }
-
-        $token = $user->createToken('manufaktur-mobile-sso')->plainTextToken;
-
-        return response()->json([
-            'success' => true,
-            'message' => $isNewUser 
-                ? "Registrasi & login via $providerName SSO berhasil" 
-                : "Login via $providerName SSO berhasil",
-            'is_new_user' => $isNewUser,
-            'provider' => $validated['provider'],
-            'token' => $token,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'avatar' => $user->avatar,
-                'company' => $customer->company,
-                'customer_id' => $customer->id,
-                'auth_type' => 'sso',
-                'sso_provider' => $validated['provider'],
-            ],
-        ], $isNewUser ? 201 : 200);
     }
 
     /**
@@ -193,20 +246,36 @@ class AuthController extends Controller
      */
     public function me(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $customer = Customer::where('email', $user->email)->first();
+        try {
+            $user = $request->user();
+            if (! $user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pengguna tidak terautentikasi.',
+                ], 401);
+            }
 
-        return response()->json([
-            'success' => true,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'company' => $customer?->company ?? 'PT Kopi Nusantara Jaya',
-                'customer_id' => $customer?->id,
-            ],
-        ]);
+            $customer = Customer::where('email', $user->email)->first();
+
+            return response()->json([
+                'success' => true,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'company' => $customer?->company ?? 'PT Kopi Nusantara Jaya',
+                    'customer_id' => $customer?->id,
+                ],
+            ]);
+        } catch (Throwable $e) {
+            Log::error('AuthController me error: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memuat profil pengguna.',
+            ], 500);
+        }
     }
 
     /**
@@ -214,11 +283,23 @@ class AuthController extends Controller
      */
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        try {
+            $token = $request->user()?->currentAccessToken();
+            if ($token && method_exists($token, 'delete')) {
+                $token->delete();
+            }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Logout berhasil',
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Logout berhasil',
+            ]);
+        } catch (Throwable $e) {
+            Log::error('AuthController logout error: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal melakukan logout.',
+            ], 500);
+        }
     }
 }

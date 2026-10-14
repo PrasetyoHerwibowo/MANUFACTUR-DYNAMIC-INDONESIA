@@ -12,7 +12,9 @@ use App\Support\Reference;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Throwable;
 
 class OrderApiController extends Controller
 {
@@ -21,23 +23,33 @@ class OrderApiController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $customer = Customer::where('email', $user?->email)->first();
+        try {
+            $user = $request->user();
+            $customer = Customer::where('email', $user?->email)->first();
 
-        $query = Order::with(['items.machine', 'payments', 'customer'])->latest('id');
+            $query = Order::with(['items.machine', 'payments', 'customer'])->latest('id');
 
-        if ($customer) {
-            $query->where('customer_id', $customer->id);
+            if ($customer) {
+                $query->where('customer_id', $customer->id);
+            }
+
+            $orders = $query->get()->map(function ($order) {
+                return $this->formatOrderResponse($order);
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $orders,
+            ]);
+        } catch (Throwable $e) {
+            Log::error('OrderApiController index error: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memuat daftar pesanan.',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
         }
-
-        $orders = $query->get()->map(function ($order) {
-            return $this->formatOrderResponse($order);
-        });
-
-        return response()->json([
-            'success' => true,
-            'data' => $orders,
-        ]);
     }
 
     /**
@@ -45,15 +57,32 @@ class OrderApiController extends Controller
      */
     public function show(string $id): JsonResponse
     {
-        $order = Order::with(['items.machine', 'payments', 'customer'])
-            ->where('id', $id)
-            ->orWhere('order_code', $id)
-            ->firstOrFail();
+        try {
+            $order = Order::with(['items.machine', 'payments', 'customer'])
+                ->where('id', is_numeric($id) ? (int)$id : 0)
+                ->orWhere('order_code', $id)
+                ->first();
 
-        return response()->json([
-            'success' => true,
-            'data' => $this->formatOrderResponse($order),
-        ]);
+            if (! $order) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pesanan tidak ditemukan.',
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $this->formatOrderResponse($order),
+            ]);
+        } catch (Throwable $e) {
+            Log::error('OrderApiController show error: ' . $e->getMessage(), ['id' => $id]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memuat detail pesanan.',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
     }
 
     /**
@@ -71,83 +100,97 @@ class OrderApiController extends Controller
             'dp_proof' => ['nullable', 'string'],
         ]);
 
-        $machine = Machine::findOrFail($validated['machine_id']);
-        $user = $request->user();
-        
-        $customer = Customer::firstOrCreate(
-            ['email' => $user?->email ?? 'procurement@kopinusantara.co.id'],
-            [
-                'customer_code' => 'CUST-' . strtoupper(substr(uniqid(), -6)),
-                'name' => $user?->name ?? 'Procurement Client',
-                'company' => 'PT Kopi Nusantara Jaya',
-                'phone' => $user?->phone ?? '0812-9876-5432',
-                'address' => $validated['delivery_address'],
-            ]
-        );
+        try {
+            $machine = Machine::findOrFail($validated['machine_id']);
+            $user = $request->user();
+            
+            $customer = Customer::firstOrCreate(
+                ['email' => $user?->email ?? 'procurement@kopinusantara.co.id'],
+                [
+                    'customer_code' => 'CUST-' . strtoupper(substr(uniqid(), -6)),
+                    'name' => $user?->name ?? 'Procurement Client',
+                    'company' => 'PT Kopi Nusantara Jaya',
+                    'phone' => $user?->phone ?? null,
+                    'address' => $validated['delivery_address'],
+                ]
+            );
 
-        $unitPrice = (float) ($machine->price ?? 145000000);
-        $totalAmount = $unitPrice * $validated['quantity'];
-        $dpAmount = $totalAmount * 0.50;
-        $pelunasanAmount = $totalAmount * 0.50;
+            $unitPrice = (float) ($machine->price ?? 145000000);
+            $totalAmount = $unitPrice * $validated['quantity'];
+            $dpAmount = $totalAmount * 0.50;
+            $pelunasanAmount = $totalAmount * 0.50;
 
-        $orderCode = 'PO-2026-0' . rand(100, 999);
+            do {
+                $orderCode = 'PO-' . date('Ymd') . '-' . strtoupper(Str::random(6));
+            } while (Order::where('order_code', $orderCode)->exists());
 
-        $order = DB::transaction(function () use (
-            $customer, $orderCode, $totalAmount, $dpAmount, $pelunasanAmount,
-            $validated, $machine, $unitPrice
-        ) {
-            $order = Order::create([
-                'customer_id' => $customer->id,
-                'order_code' => $orderCode,
-                'total_amount' => $totalAmount,
-                'dp_amount' => $dpAmount,
-                'pelunasan_amount' => $pelunasanAmount,
-                'status' => Order::STATUS_MENUNGGU_PEMBAYARAN,
-                'production_status' => Order::STAGE_VERIFIKASI_DP,
-                'dp_proof' => $validated['dp_proof'] ?? null,
-                'delivery_address' => $validated['delivery_address'],
-                'custom_notes' => $validated['custom_notes'] ?? null,
-                'payment_deadline' => now()->addHours(12),
-            ]);
-
-            OrderItem::create([
-                'order_id' => $order->id,
-                'machine_id' => $machine->id,
-                'name' => $machine->name,
-                'unit_price' => $unitPrice,
-                'quantity' => $validated['quantity'],
-                'subtotal' => $totalAmount,
-            ]);
-
-            // Buat record pembayaran DP 50%
-            $payment = $order->payments()->create([
-                'payment_code' => Reference::make(Reference::PAYMENT, Payment::class, 'payment_code'),
-                'attempt' => 1,
-                'method' => $validated['bank_method'] ?? Payment::METHOD_TRANSFER_BANK,
-                'amount' => $dpAmount,
-                'status' => filled($validated['dp_proof']) ? Payment::STATUS_LUNAS : Payment::STATUS_MENUNGGU,
-                'expires_at' => now()->addHours(12),
-                'paid_at' => filled($validated['dp_proof']) ? now() : null,
-                'proof' => $validated['dp_proof'] ?? null,
-                'notes' => 'Pembayaran Uang Muka DP 50% untuk pesanan ' . $orderCode,
-            ]);
-
-            if (filled($validated['dp_proof'])) {
-                $order->update([
-                    'production_status' => Order::STAGE_PERSIAPAN_BAHAN,
+            $order = DB::transaction(function () use (
+                $customer, $orderCode, $totalAmount, $dpAmount, $pelunasanAmount,
+                $validated, $machine, $unitPrice
+            ) {
+                $order = Order::create([
+                    'customer_id' => $customer->id,
+                    'order_code' => $orderCode,
+                    'total_amount' => $totalAmount,
+                    'dp_amount' => $dpAmount,
+                    'pelunasan_amount' => $pelunasanAmount,
+                    'status' => Order::STATUS_MENUNGGU_PEMBAYARAN,
+                    'production_status' => Order::STAGE_VERIFIKASI_DP,
+                    'dp_proof' => $validated['dp_proof'] ?? null,
+                    'delivery_address' => $validated['delivery_address'],
+                    'custom_notes' => $validated['custom_notes'] ?? null,
+                    'payment_deadline' => now()->addHours(12),
                 ]);
-            }
 
-            return $order;
-        });
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'machine_id' => $machine->id,
+                    'unit_price' => $unitPrice,
+                    'quantity' => $validated['quantity'],
+                    'subtotal' => $totalAmount,
+                ]);
 
-        $order->load(['items.machine', 'payments', 'customer']);
+                // Buat record pembayaran DP 50%
+                $order->payments()->create([
+                    'payment_code' => Reference::make(Reference::PAYMENT, Payment::class, 'payment_code'),
+                    'attempt' => 1,
+                    'method' => $validated['bank_method'] ?? Payment::METHOD_TRANSFER_BANK,
+                    'amount' => $dpAmount,
+                    'status' => !empty($validated['dp_proof']) ? Payment::STATUS_LUNAS : Payment::STATUS_MENUNGGU,
+                    'expires_at' => now()->addHours(12),
+                    'paid_at' => !empty($validated['dp_proof']) ? now() : null,
+                    'proof' => $validated['dp_proof'] ?? null,
+                    'notes' => 'Pembayaran Uang Muka DP 50% untuk pesanan ' . $orderCode,
+                ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Purchase Order (PO) berhasil dibuat.',
-            'data' => $this->formatOrderResponse($order),
-        ], 201);
+                if (!empty($validated['dp_proof'])) {
+                    $order->update([
+                        'production_status' => Order::STAGE_PERSIAPAN_BAHAN,
+                    ]);
+                }
+
+                return $order;
+            });
+
+            $order->load(['items.machine', 'payments', 'customer']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Purchase Order (PO) berhasil dibuat.',
+                'data' => $this->formatOrderResponse($order),
+            ], 201);
+        } catch (Throwable $e) {
+            Log::error('OrderApiController store error: ' . $e->getMessage(), [
+                'machine_id' => $validated['machine_id'] ?? null,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membuat Purchase Order (PO). Silakan periksa kembali data Anda.',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
     }
 
     /**
@@ -156,33 +199,54 @@ class OrderApiController extends Controller
      */
     public function uploadDpProof(Request $request, string $id): JsonResponse
     {
-        $order = Order::where('id', $id)->orWhere('order_code', $id)->firstOrFail();
-
         $validated = $request->validate([
             'proof' => ['required', 'string'],
             'notes' => ['nullable', 'string'],
         ]);
 
-        $dpPayment = $order->payments()->first();
-        if ($dpPayment) {
-            $dpPayment->update([
-                'proof' => $validated['proof'],
-                'status' => Payment::STATUS_LUNAS,
-                'paid_at' => now(),
-                'notes' => $validated['notes'] ?? $dpPayment->notes,
+        try {
+            $order = Order::where('id', is_numeric($id) ? (int)$id : 0)
+                ->orWhere('order_code', $id)
+                ->first();
+
+            if (! $order) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pesanan tidak ditemukan.',
+                ], 404);
+            }
+
+            DB::transaction(function () use ($order, $validated) {
+                $dpPayment = $order->payments()->first();
+                if ($dpPayment) {
+                    $dpPayment->update([
+                        'proof' => $validated['proof'],
+                        'status' => Payment::STATUS_LUNAS,
+                        'paid_at' => now(),
+                        'notes' => $validated['notes'] ?? $dpPayment->notes,
+                    ]);
+                }
+
+                $order->update([
+                    'dp_proof' => $validated['proof'],
+                    'production_status' => Order::STAGE_PERSIAPAN_BAHAN,
+                ]);
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Bukti pembayaran DP 50% berhasil diunggah. Tahap produksi diperbarui ke: Persiapan Bahan Baku.',
+                'data' => $this->formatOrderResponse($order->fresh(['items.machine', 'payments', 'customer'])),
             ]);
+        } catch (Throwable $e) {
+            Log::error('OrderApiController uploadDpProof error: ' . $e->getMessage(), ['id' => $id]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengunggah bukti pembayaran DP.',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
         }
-
-        $order->update([
-            'dp_proof' => $validated['proof'],
-            'production_status' => Order::STAGE_PERSIAPAN_BAHAN,
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Bukti pembayaran DP 50% berhasil diunggah. Tahap produksi diperbarui ke: Persiapan Bahan Baku.',
-            'data' => $this->formatOrderResponse($order->fresh(['items.machine', 'payments', 'customer'])),
-        ]);
     }
 
     /**
@@ -191,38 +255,58 @@ class OrderApiController extends Controller
      */
     public function uploadPelunasanProof(Request $request, string $id): JsonResponse
     {
-        $order = Order::where('id', $id)->orWhere('order_code', $id)->firstOrFail();
-
         $validated = $request->validate([
             'proof' => ['required', 'string'],
             'notes' => ['nullable', 'string'],
         ]);
 
-        // Buat record pembayaran pelunasan
-        $order->payments()->create([
-            'payment_code' => Reference::make(Reference::PAYMENT, Payment::class, 'payment_code'),
-            'attempt' => $order->payments()->count() + 1,
-            'method' => Payment::METHOD_TRANSFER_BANK,
-            'amount' => $order->pelunasan_amount,
-            'status' => Payment::STATUS_LUNAS,
-            'expires_at' => now()->addHours(12),
-            'paid_at' => now(),
-            'proof' => $validated['proof'],
-            'notes' => 'Pembayaran Pelunasan Sisa 50% untuk pesanan ' . $order->order_code,
-        ]);
+        try {
+            $order = Order::where('id', is_numeric($id) ? (int)$id : 0)
+                ->orWhere('order_code', $id)
+                ->first();
 
-        $order->update([
-            'status' => Order::STATUS_LUNAS,
-            'pelunasan_proof' => $validated['proof'],
-            'production_status' => Order::STAGE_PENGIRIMAN_INSTALASI,
-            'paid_at' => now(),
-        ]);
+            if (! $order) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pesanan tidak ditemukan.',
+                ], 404);
+            }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Bukti pelunasan 50% berhasil diunggah. Tahap produksi diperbarui ke: Pengiriman & Instalasi.',
-            'data' => $this->formatOrderResponse($order->fresh(['items.machine', 'payments', 'customer'])),
-        ]);
+            DB::transaction(function () use ($order, $validated) {
+                $order->payments()->create([
+                    'payment_code' => Reference::make(Reference::PAYMENT, Payment::class, 'payment_code'),
+                    'attempt' => $order->payments()->count() + 1,
+                    'method' => Payment::METHOD_TRANSFER_BANK,
+                    'amount' => $order->pelunasan_amount,
+                    'status' => Payment::STATUS_LUNAS,
+                    'expires_at' => now()->addHours(12),
+                    'paid_at' => now(),
+                    'proof' => $validated['proof'],
+                    'notes' => 'Pembayaran Pelunasan Sisa 50% untuk pesanan ' . $order->order_code,
+                ]);
+
+                $order->update([
+                    'status' => Order::STATUS_LUNAS,
+                    'pelunasan_proof' => $validated['proof'],
+                    'production_status' => Order::STAGE_PENGIRIMAN_INSTALASI,
+                    'paid_at' => now(),
+                ]);
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Bukti pelunasan 50% berhasil diunggah. Tahap produksi diperbarui ke: Pengiriman & Instalasi.',
+                'data' => $this->formatOrderResponse($order->fresh(['items.machine', 'payments', 'customer'])),
+            ]);
+        } catch (Throwable $e) {
+            Log::error('OrderApiController uploadPelunasanProof error: ' . $e->getMessage(), ['id' => $id]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengunggah bukti pembayaran pelunasan.',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
     }
 
     /**
@@ -231,43 +315,60 @@ class OrderApiController extends Controller
      */
     public function invoice(string $id): JsonResponse
     {
-        $order = Order::with(['items.machine', 'payments', 'customer'])
-            ->where('id', $id)
-            ->orWhere('order_code', $id)
-            ->firstOrFail();
+        try {
+            $order = Order::with(['items.machine', 'payments', 'customer'])
+                ->where('id', is_numeric($id) ? (int)$id : 0)
+                ->orWhere('order_code', $id)
+                ->first();
 
-        $invoiceData = [
-            'invoice_number' => 'INV/' . date('Ymd') . '/' . $order->order_code,
-            'po_number' => $order->order_code,
-            'date' => $order->created_at->format('d F Y'),
-            'company_name' => 'PT MANUFACTUR DYNAMIC INDONESIA',
-            'company_address' => 'Kawasan Industri Manufaktur Kopi, Jawa Barat, Indonesia',
-            'company_phone' => '+62 812-3456-7890',
-            'company_email' => 'finance@manufacturdynamic.com',
-            'customer_name' => $order->customer?->name ?? 'Pelanggan',
-            'customer_company' => $order->customer?->company ?? 'PT Kopi Nusantara Jaya',
-            'customer_address' => $order->delivery_address ?? $order->customer?->address,
-            'items' => $order->items->map(fn($item) => [
-                'name' => $item->name,
-                'quantity' => $item->quantity,
-                'unit_price' => (float) $item->unit_price,
-                'subtotal' => (float) $item->subtotal,
-            ]),
-            'total_amount' => (float) $order->total_amount,
-            'dp_amount' => (float) $order->dp_amount,
-            'pelunasan_amount' => (float) $order->pelunasan_amount,
-            'is_dp_paid' => filled($order->dp_proof),
-            'is_fully_paid' => $order->status === Order::STATUS_LUNAS || filled($order->pelunasan_proof),
-            'bank_accounts' => [
-                ['bank' => 'BCA Corporate', 'account' => '088-2930-112', 'holder' => 'PT Manufactur Dynamic Indonesia'],
-                ['bank' => 'Mandiri B2B', 'account' => '137-009-881-221', 'holder' => 'PT Manufactur Dynamic Indonesia'],
-            ],
-        ];
+            if (! $order) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pesanan untuk invoice tidak ditemukan.',
+                ], 404);
+            }
 
-        return response()->json([
-            'success' => true,
-            'data' => $invoiceData,
-        ]);
+            $invoiceData = [
+                'invoice_number' => 'INV/' . date('Ymd') . '/' . $order->order_code,
+                'po_number' => $order->order_code,
+                'date' => $order->created_at->format('d F Y'),
+                'company_name' => 'PT MANUFACTUR DYNAMIC INDONESIA',
+                'company_address' => 'Kawasan Industri Manufaktur Kopi, Jawa Barat, Indonesia',
+                'company_phone' => '+62 812-3456-7890',
+                'company_email' => 'finance@manufacturdynamic.com',
+                'customer_name' => $order->customer?->name ?? 'Pelanggan',
+                'customer_company' => $order->customer?->company ?? 'PT Kopi Nusantara Jaya',
+                'customer_address' => $order->delivery_address ?? $order->customer?->address,
+                'items' => $order->items->map(fn($item) => [
+                    'name' => $item->name,
+                    'quantity' => $item->quantity,
+                    'unit_price' => (float) $item->unit_price,
+                    'subtotal' => (float) $item->subtotal,
+                ]),
+                'total_amount' => (float) $order->total_amount,
+                'dp_amount' => (float) $order->dp_amount,
+                'pelunasan_amount' => (float) $order->pelunasan_amount,
+                'is_dp_paid' => filled($order->dp_proof),
+                'is_fully_paid' => $order->status === Order::STATUS_LUNAS || filled($order->pelunasan_proof),
+                'bank_accounts' => [
+                    ['bank' => 'BCA Corporate', 'account' => '088-2930-112', 'holder' => 'PT Manufactur Dynamic Indonesia'],
+                    ['bank' => 'Mandiri B2B', 'account' => '137-009-881-221', 'holder' => 'PT Manufactur Dynamic Indonesia'],
+                ],
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $invoiceData,
+            ]);
+        } catch (Throwable $e) {
+            Log::error('OrderApiController invoice error: ' . $e->getMessage(), ['id' => $id]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memuat data invoice.',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
     }
 
     private function formatOrderResponse(Order $order): array

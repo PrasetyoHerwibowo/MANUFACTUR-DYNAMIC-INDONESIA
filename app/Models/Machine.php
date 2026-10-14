@@ -83,6 +83,11 @@ class Machine extends Model
         return $first ? $first->url() : null;
     }
 
+    public function primaryImageUrl(): ?string
+    {
+        return $this->mainImageUrl();
+    }
+
     /**
      * Foto utama mesin, dipakai di tampilan publik.
      */

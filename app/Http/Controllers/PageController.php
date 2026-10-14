@@ -13,15 +13,23 @@ class PageController extends Controller
      */
     public function about(): View
     {
-        $categories = Cache::remember('products_categories', 1800, function () {
-            return Category::query()
-                ->active()
-                ->ordered()
-                ->withCount(['machines' => fn ($query) => $query->where('is_active', true)])
-                ->get();
-        });
+        try {
+            $categories = Cache::remember('products_categories', 1800, function () {
+                return Category::query()
+                    ->active()
+                    ->ordered()
+                    ->withCount(['machines' => fn ($query) => $query->where('is_active', true)])
+                    ->get();
+            });
 
-        return view('public.about', compact('categories'));
+            return view('public.about', compact('categories'));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('PageController@about error: ' . $e->getMessage());
+
+            $categories = collect();
+
+            return view('public.about', compact('categories'));
+        }
     }
 
     /**

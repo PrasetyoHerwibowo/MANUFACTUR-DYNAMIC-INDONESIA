@@ -52,20 +52,46 @@ class CompanyProfileController extends Controller
             'about_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:6144'],
         ]);
 
-        $profile = CompanyProfile::query()->first() ?? new CompanyProfile();
+        $uploadedNew = [];
+        try {
+            $profile = CompanyProfile::query()->first() ?? new CompanyProfile();
 
-        foreach (['logo' => 'profile', 'hero_image' => 'profile', 'about_image' => 'profile'] as $field => $folder) {
-            if ($request->hasFile($field)) {
-                ImageUploader::delete($profile->{$field});
-                $validated[$field] = ImageUploader::store($request->file($field), $folder);
+            foreach (['logo' => 'profile', 'hero_image' => 'profile', 'about_image' => 'profile'] as $field => $folder) {
+                if ($request->hasFile($field)) {
+                    $newUrl = ImageUploader::store($request->file($field), $folder);
+                    $uploadedNew[$field] = [
+                        'new' => $newUrl,
+                        'old' => $profile->{$field},
+                    ];
+                    $validated[$field] = $newUrl;
+                }
             }
+
+            $profile->fill($validated)->save();
+            Site::flush();
+
+            // Hapus gambar lama hanya setelah simpan ke DB berhasil
+            foreach ($uploadedNew as $field => $data) {
+                if ($data['old'] && $data['old'] !== $data['new']) {
+                    ImageUploader::delete($data['old']);
+                }
+            }
+
+            return redirect()
+                ->route('admin.profile.edit')
+                ->with('success', 'Profil perusahaan berhasil diperbarui.');
+        } catch (\Throwable $e) {
+            // Hapus gambar baru jika penyimpanan gagal
+            foreach ($uploadedNew as $field => $data) {
+                if ($data['new']) {
+                    ImageUploader::delete($data['new']);
+                }
+            }
+            \Illuminate\Support\Facades\Log::error('CompanyProfileController@update error: ' . $e->getMessage());
+
+            return back()
+                ->withInput()
+                ->with('error', 'Gagal memperbarui profil perusahaan: '.$e->getMessage());
         }
-
-        $profile->fill($validated)->save();
-        Site::flush();
-
-        return redirect()
-            ->route('admin.profile.edit')
-            ->with('success', 'Profil perusahaan berhasil diperbarui.');
     }
 }

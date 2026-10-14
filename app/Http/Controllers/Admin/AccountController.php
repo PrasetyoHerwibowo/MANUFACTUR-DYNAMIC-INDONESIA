@@ -35,25 +35,42 @@ class AccountController extends Controller
             'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
         ]);
 
-        if ($request->hasFile('avatar')) {
-            ImageUploader::delete($user->avatar);
-            $validated['avatar'] = ImageUploader::store($request->file('avatar'), 'avatars');
-        }
-
-        $user->update($validated);
-
-        // Sinkronkan nomor telepon ke profil perusahaan jika diisi / diubah di pengaturan akun
-        if (array_key_exists('phone', $validated)) {
-            $company = \App\Models\CompanyProfile::first();
-            if ($company) {
-                $company->update(['phone' => $validated['phone']]);
-                \App\Support\Site::flush();
+        $uploadedAvatar = null;
+        try {
+            if ($request->hasFile('avatar')) {
+                $uploadedAvatar = ImageUploader::store($request->file('avatar'), 'avatars');
+                $validated['avatar'] = $uploadedAvatar;
             }
-        }
 
-        return redirect()
-            ->route('admin.account.edit')
-            ->with('success', 'Data akun berhasil diperbarui.');
+            $oldAvatar = $user->avatar;
+            $user->update($validated);
+
+            if ($uploadedAvatar && $oldAvatar && $oldAvatar !== $uploadedAvatar) {
+                ImageUploader::delete($oldAvatar);
+            }
+
+            // Sinkronkan nomor telepon ke profil perusahaan jika diisi / diubah di pengaturan akun
+            if (array_key_exists('phone', $validated)) {
+                $company = \App\Models\CompanyProfile::first();
+                if ($company) {
+                    $company->update(['phone' => $validated['phone']]);
+                    \App\Support\Site::flush();
+                }
+            }
+
+            return redirect()
+                ->route('admin.account.edit')
+                ->with('success', 'Data akun berhasil diperbarui.');
+        } catch (\Throwable $e) {
+            if ($uploadedAvatar) {
+                ImageUploader::delete($uploadedAvatar);
+            }
+            \Illuminate\Support\Facades\Log::error('AccountController@update error: ' . $e->getMessage());
+
+            return back()
+                ->withInput()
+                ->with('error', 'Gagal memperbarui data akun: '.$e->getMessage());
+        }
     }
 
     /**
@@ -65,12 +82,18 @@ class AccountController extends Controller
             'password' => ['required', 'string', 'min:6', 'confirmed'],
         ]);
 
-        $user = $request->user();
+        try {
+            $user = $request->user();
+            $user->update(['password' => $validated['password']]);
 
-        $user->update(['password' => $validated['password']]);
+            return redirect()
+                ->route('admin.account.edit')
+                ->with('success', 'Password berhasil diperbarui.');
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('AccountController@updatePassword error: ' . $e->getMessage());
 
-        return redirect()
-            ->route('admin.account.edit')
-            ->with('success', 'Password berhasil diperbarui.');
+            return back()
+                ->with('error', 'Gagal memperbarui password: '.$e->getMessage());
+        }
     }
 }

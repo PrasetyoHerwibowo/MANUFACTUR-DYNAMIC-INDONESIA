@@ -43,6 +43,14 @@ class OrderItem extends Model
     }
 
     /**
+     * Accessor untuk $item->name agar kompatibel dengan kode controller & view.
+     */
+    public function getNameAttribute(): string
+    {
+        return $this->machineName();
+    }
+
+    /**
      * Kode/tipe model mesin bila ada.
      */
     public function machineCode(): ?string

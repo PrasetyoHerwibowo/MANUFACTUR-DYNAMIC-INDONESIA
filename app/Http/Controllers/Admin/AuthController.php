@@ -40,7 +40,7 @@ class AuthController extends Controller
         }
 
         if (! $request->user()->isAdmin()) {
-            Auth::logout();
+            Auth::guard('web')->logout();
 
             throw ValidationException::withMessages([
                 'email' => 'Akun ini tidak memiliki hak akses admin.',
@@ -59,7 +59,7 @@ class AuthController extends Controller
      */
     public function logout(Request $request): RedirectResponse
     {
-        Auth::logout();
+        Auth::guard('web')->logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

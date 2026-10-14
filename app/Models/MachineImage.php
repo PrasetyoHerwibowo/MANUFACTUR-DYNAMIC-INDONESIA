@@ -30,4 +30,9 @@ class MachineImage extends Model
     {
         return \App\Support\ImageUploader::url($this->path);
     }
+
+    public function imageUrl(): string
+    {
+        return $this->url();
+    }
 }

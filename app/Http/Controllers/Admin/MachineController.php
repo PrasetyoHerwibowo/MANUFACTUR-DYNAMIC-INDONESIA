@@ -38,25 +38,34 @@ class MachineController extends Controller
      */
     public function index(Request $request): View
     {
-        $machines = Machine::query()
-            ->with(['category', 'images'])
-            ->when($request->filled('kategori'), fn ($query) => $query->where('category_id', $request->integer('kategori')))
-            ->when($request->filled('q'), function ($query) use ($request) {
-                $keyword = '%'.$request->string('q').'%';
-                $query->where(function ($sub) use ($keyword) {
-                    $sub->where('name', 'like', $keyword)
-                        ->orWhere('model_code', 'like', $keyword)
-                        ->orWhere('function', 'like', $keyword);
-                });
-            })
-            ->orderBy('sort_order')
-            ->latest('id')
-            ->paginate(10)
-            ->withQueryString();
+        try {
+            $machines = Machine::query()
+                ->with(['category', 'images'])
+                ->when($request->filled('kategori'), fn ($query) => $query->where('category_id', $request->integer('kategori')))
+                ->when($request->filled('q'), function ($query) use ($request) {
+                    $keyword = '%'.$request->string('q').'%';
+                    $query->where(function ($sub) use ($keyword) {
+                        $sub->where('name', 'like', $keyword)
+                            ->orWhere('model_code', 'like', $keyword)
+                            ->orWhere('function', 'like', $keyword);
+                    });
+                })
+                ->orderBy('sort_order')
+                ->latest('id')
+                ->paginate(10)
+                ->withQueryString();
 
-        $categories = Category::query()->ordered()->get();
+            $categories = Category::query()->ordered()->get();
 
-        return view('admin.machines.index', compact('machines', 'categories'));
+            return view('admin.machines.index', compact('machines', 'categories'));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('MachineController@index error: ' . $e->getMessage());
+
+            $machines = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 10);
+            $categories = collect();
+
+            return view('admin.machines.index', compact('machines', 'categories'))->with('error', 'Gagal memuat daftar model mesin.');
+        }
     }
 
     public function create(): View
@@ -71,20 +80,36 @@ class MachineController extends Controller
     {
         $validated = $this->validated($request);
 
-        $validated['slug'] = Slug::make(Machine::class, $validated['name']);
-        $validated['main_image'] = ImageUploader::store($request->file('main_image'), 'machines');
+        $uploadedImage = null;
+        try {
+            $validated['slug'] = Slug::make(Machine::class, $validated['name']);
 
-        // Urutan tampil dan status tampil tidak lagi diatur dari form: data
-        // baru langsung tampil di website dan diletakkan paling belakang.
-        $validated['sort_order'] = (int) Machine::query()->max('sort_order') + 1;
-        $validated['is_active'] = true;
+            if ($request->hasFile('main_image')) {
+                $uploadedImage = ImageUploader::store($request->file('main_image'), 'machines');
+                $validated['main_image'] = $uploadedImage;
+            }
 
-        Machine::create($validated);
-        Site::flushPublicCache();
+            // Urutan tampil dan status tampil tidak lagi diatur dari form: data
+            // baru langsung tampil di website dan diletakkan paling belakang.
+            $validated['sort_order'] = (int) Machine::query()->max('sort_order') + 1;
+            $validated['is_active'] = true;
 
-        return redirect()
-            ->route('admin.machines.index')
-            ->with('success', 'Model mesin berhasil ditambahkan.');
+            Machine::create($validated);
+            Site::flushPublicCache();
+
+            return redirect()
+                ->route('admin.machines.index')
+                ->with('success', 'Model mesin berhasil ditambahkan.');
+        } catch (\Throwable $e) {
+            if ($uploadedImage) {
+                ImageUploader::delete($uploadedImage);
+            }
+            \Illuminate\Support\Facades\Log::error('MachineController@store error: ' . $e->getMessage());
+
+            return back()
+                ->withInput()
+                ->with('error', 'Gagal menambahkan model mesin: '.$e->getMessage());
+        }
     }
 
     public function edit(Machine $machine): View
@@ -99,39 +124,64 @@ class MachineController extends Controller
     {
         $validated = $this->validated($request, $machine);
 
-        $validated['slug'] = Slug::make(Machine::class, $validated['name'], $machine->id);
+        $uploadedImage = null;
+        try {
+            $validated['slug'] = Slug::make(Machine::class, $validated['name'], $machine->id);
 
-        if ($request->hasFile('main_image')) {
-            ImageUploader::delete($machine->main_image);
-            $validated['main_image'] = ImageUploader::store($request->file('main_image'), 'machines');
+            if ($request->hasFile('main_image')) {
+                $uploadedImage = ImageUploader::store($request->file('main_image'), 'machines');
+                $validated['main_image'] = $uploadedImage;
+            }
+
+            // Status tampil tidak lagi diatur dari form: data yang disunting selalu
+            // tampil di website. Urutan tampil dan penandaan unggulan dibiarkan.
+            $validated['is_active'] = true;
+
+            $oldImage = $machine->main_image;
+            $machine->update($validated);
+
+            if ($uploadedImage && $oldImage && $oldImage !== $uploadedImage) {
+                ImageUploader::delete($oldImage);
+            }
+
+            Site::flushPublicCache();
+
+            return redirect()
+                ->route('admin.machines.index')
+                ->with('success', 'Model mesin berhasil diperbarui.');
+        } catch (\Throwable $e) {
+            if ($uploadedImage) {
+                ImageUploader::delete($uploadedImage);
+            }
+            \Illuminate\Support\Facades\Log::error('MachineController@update error: ' . $e->getMessage());
+
+            return back()
+                ->withInput()
+                ->with('error', 'Gagal memperbarui model mesin: '.$e->getMessage());
         }
-
-        // Status tampil tidak lagi diatur dari form: data yang disunting selalu
-        // tampil di website. Urutan tampil dan penandaan unggulan dibiarkan.
-        $validated['is_active'] = true;
-
-        $machine->update($validated);
-        Site::flushPublicCache();
-
-        return redirect()
-            ->route('admin.machines.index')
-            ->with('success', 'Model mesin berhasil diperbarui.');
     }
 
     public function destroy(Machine $machine): RedirectResponse
     {
-        ImageUploader::delete($machine->main_image);
+        try {
+            ImageUploader::delete($machine->main_image);
 
-        foreach ($machine->images as $image) {
-            ImageUploader::delete($image->path);
+            foreach ($machine->images as $image) {
+                ImageUploader::delete($image->path);
+            }
+
+            $machine->delete();
+            Site::flushPublicCache();
+
+            return redirect()
+                ->route('admin.machines.index')
+                ->with('success', 'Model mesin berhasil dihapus.');
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('MachineController@destroy error: ' . $e->getMessage());
+
+            return back()
+                ->with('error', 'Gagal menghapus model mesin: '.$e->getMessage());
         }
-
-        $machine->delete();
-        Site::flushPublicCache();
-
-        return redirect()
-            ->route('admin.machines.index')
-            ->with('success', 'Model mesin berhasil dihapus.');
     }
 
     /**

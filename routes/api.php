@@ -15,7 +15,9 @@ use Illuminate\Support\Facades\Route;
 
 // Authentication (Public & SSO)
 Route::post('/register', [AuthController::class, 'register']);
+Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/sso', [AuthController::class, 'sso']);
 Route::post('/sso', [AuthController::class, 'sso']);
 

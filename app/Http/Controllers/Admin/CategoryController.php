@@ -43,11 +43,19 @@ class CategoryController extends Controller
      */
     public function index(): View
     {
-        $categories = Category::query()
-            ->ordered()
-            ->paginate(10);
+        try {
+            $categories = Category::query()
+                ->ordered()
+                ->paginate(10);
 
-        return view('admin.categories.index', compact('categories'));
+            return view('admin.categories.index', compact('categories'));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('CategoryController@index error: ' . $e->getMessage());
+
+            $categories = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 10);
+
+            return view('admin.categories.index', compact('categories'))->with('error', 'Gagal memuat jenis mesin.');
+        }
     }
 
     public function create(): View
@@ -59,21 +67,29 @@ class CategoryController extends Controller
     {
         $validated = $this->validated($request);
 
-        $validated['slug'] = Slug::make(Category::class, $validated['name']);
+        try {
+            $validated['slug'] = Slug::make(Category::class, $validated['name']);
 
-        // Foto jenis mesin sudah dihapus dari form, sehingga kolom "image"
-        // tidak lagi diisi di sini.
-        // Jenis mesin yang ditambahkan admin langsung tampil di website.
-        // Urutan tidak lagi diatur manual: data baru diletakkan paling belakang.
-        $validated['is_active'] = true;
-        $validated['sort_order'] = (int) Category::query()->max('sort_order') + 1;
+            // Foto jenis mesin sudah dihapus dari form, sehingga kolom "image"
+            // tidak lagi diisi di sini.
+            // Jenis mesin yang ditambahkan admin langsung tampil di website.
+            // Urutan tidak lagi diatur manual: data baru diletakkan paling belakang.
+            $validated['is_active'] = true;
+            $validated['sort_order'] = (int) Category::query()->max('sort_order') + 1;
 
-        Category::create($validated);
-        Site::flushPublicCache();
+            Category::create($validated);
+            Site::flushPublicCache();
 
-        return redirect()
-            ->route('admin.categories.index')
-            ->with('success', 'Jenis mesin berhasil ditambahkan.');
+            return redirect()
+                ->route('admin.categories.index')
+                ->with('success', 'Jenis mesin berhasil ditambahkan.');
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('CategoryController@store error: ' . $e->getMessage());
+
+            return back()
+                ->withInput()
+                ->with('error', 'Gagal menambahkan jenis mesin: '.$e->getMessage());
+        }
     }
 
     public function edit(Category $category): View
@@ -85,38 +101,53 @@ class CategoryController extends Controller
     {
         $validated = $this->validated($request, $category);
 
-        $validated['slug'] = Slug::make(Category::class, $validated['name'], $category->id);
+        try {
+            $validated['slug'] = Slug::make(Category::class, $validated['name'], $category->id);
 
-        // Foto jenis mesin sudah dihapus dari form dan dari struktur tabel,
-        // jadi tidak ada berkas foto yang perlu diurus saat menyunting.
-        // Jenis mesin yang disunting admin selalu tampil di website; opsi
-        // urutan dan "tampilkan di website" tidak lagi ditampilkan di form.
-        $validated['is_active'] = true;
+            // Foto jenis mesin sudah dihapus dari form dan dari struktur tabel,
+            // jadi tidak ada berkas foto yang perlu diurus saat menyunting.
+            // Jenis mesin yang disunting admin selalu tampil di website; opsi
+            // urutan dan "tampilkan di website" tidak lagi ditampilkan di form.
+            $validated['is_active'] = true;
 
-        $category->update($validated);
-        Site::flushPublicCache();
+            $category->update($validated);
+            Site::flushPublicCache();
 
-        return redirect()
-            ->route('admin.categories.index')
-            ->with('success', 'Jenis mesin berhasil diperbarui.');
+            return redirect()
+                ->route('admin.categories.index')
+                ->with('success', 'Jenis mesin berhasil diperbarui.');
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('CategoryController@update error: ' . $e->getMessage());
+
+            return back()
+                ->withInput()
+                ->with('error', 'Gagal memperbarui jenis mesin: '.$e->getMessage());
+        }
     }
 
     public function destroy(Category $category): RedirectResponse
     {
-        foreach ($category->machines as $machine) {
-            ImageUploader::delete($machine->main_image);
+        try {
+            foreach ($category->machines as $machine) {
+                ImageUploader::delete($machine->main_image);
 
-            foreach ($machine->images as $image) {
-                ImageUploader::delete($image->path);
+                foreach ($machine->images as $image) {
+                    ImageUploader::delete($image->path);
+                }
             }
+
+            $category->delete();
+            Site::flushPublicCache();
+
+            return redirect()
+                ->route('admin.categories.index')
+                ->with('success', 'Jenis mesin beserta data mesin di dalamnya berhasil dihapus.');
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('CategoryController@destroy error: ' . $e->getMessage());
+
+            return back()
+                ->with('error', 'Gagal menghapus jenis mesin: '.$e->getMessage());
         }
-
-        $category->delete();
-        Site::flushPublicCache();
-
-        return redirect()
-            ->route('admin.categories.index')
-            ->with('success', 'Jenis mesin beserta data mesin di dalamnya berhasil dihapus.');
     }
 
     /**
