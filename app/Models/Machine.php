@@ -52,6 +52,28 @@ class Machine extends Model
         return 'slug';
     }
 
+    public function resolveRouteBinding($value, $field = null)
+    {
+        return \Illuminate\Support\Facades\Cache::remember("machine_model_slug_{$value}", 3600, function () use ($value, $field) {
+            return parent::resolveRouteBinding($value, $field)?->load(['category', 'images']);
+        });
+    }
+
+    protected static function booted(): void
+    {
+        static::saved(function (Machine $machine): void {
+            \Illuminate\Support\Facades\Cache::forget("machine_model_slug_{$machine->slug}");
+            \Illuminate\Support\Facades\Cache::forget("machine_related_{$machine->id}");
+            \App\Support\Site::flushPublicCache();
+        });
+
+        static::deleted(function (Machine $machine): void {
+            \Illuminate\Support\Facades\Cache::forget("machine_model_slug_{$machine->slug}");
+            \Illuminate\Support\Facades\Cache::forget("machine_related_{$machine->id}");
+            \App\Support\Site::flushPublicCache();
+        });
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);

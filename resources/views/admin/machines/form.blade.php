@@ -41,75 +41,21 @@
                                   hint="Maksimal 375 karakter. Jelaskan kegunaan mesin ini dalam proses pengolahan." />
             </div>
 
-            {{-- Spesifikasi --}}
+            {{-- Spesifikasi & deskripsi lengkap --}}
             <div class="space-y-5 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-7 dark:border-slate-700 dark:bg-slate-900">
-                <h2 class="text-base font-extrabold text-stone-900 dark:text-white">Spesifikasi &amp; deskripsi lengkap</h2>
+                <h2 class="text-base font-extrabold text-stone-900 dark:text-white">Deskripsi &amp; Spesifikasi Tambahan</h2>
 
-                <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                    {{-- Kapasitas: desimal pakai titik, maxlength 10 karakter, blokir koma --}}
-                    <x-admin.input name="capacity_amount" label="Kapasitas (kg)" type="number" step="any" min="0" max="99999999" maxlength="10"
-                                   onkeydown="if(event.key===',')event.preventDefault();"
-                                   oninput="if(this.value.length>this.maxLength)this.value=this.value.slice(0,this.maxLength);"
-                                   :value="$machine->capacity_amount" placeholder="500"
-                                   hint="Hanya angka, titik (.) untuk desimal. Maks. 10 karakter." />
+                <div class="grid gap-6 md:grid-cols-2">
+                    <x-admin.textarea name="description" label="Deskripsi lengkap" :value="$machine->description" :rows="7"
+                                      maxlength="500"
+                                      placeholder="Tuliskan deskripsi lengkap mengenai keunggulan, material, dan detail mesin..."
+                                      hint="Maksimal 500 karakter. Satu baris kosong memisahkan paragraf pada halaman detail produk." />
 
-                    {{-- Waktu: bilangan bulat, maxlength 3 digit, blokir koma --}}
-                    <x-admin.input name="capacity_time" label="Waktu (jam)" type="number" step="1" min="1" max="999" maxlength="3"
-                                   onkeydown="if(event.key==='.'||event.key===',')event.preventDefault();"
-                                   oninput="if(this.value.length>this.maxLength)this.value=this.value.slice(0,this.maxLength);"
-                                   :value="$machine->capacity_time ?? 1" placeholder="1"
-                                   hint="Angka bulat durasi jam. Maks. 3 digit (1–999)." />
-
-                    {{-- Daya kW: desimal pakai titik, maxlength 7 karakter (9999.99), blokir koma --}}
-                    <x-admin.input name="power_kw" label="Daya (kW)" type="number" step="any" min="0" max="9999.99" maxlength="7"
-                                   onkeydown="if(event.key===',')event.preventDefault();"
-                                   oninput="if(this.value.length>this.maxLength)this.value=this.value.slice(0,this.maxLength);"
-                                   :value="$machine->power_kw" placeholder="5.5"
-                                   hint="Hanya angka, titik (.) untuk desimal. Maks. 9999.99 kW." />
-
-                    {{-- Phase: bilangan bulat, maxlength 2 digit, blokir koma dan titik --}}
-                    <x-admin.input name="power_phase" label="Phase Listrik" type="number" step="1" min="1" max="99" maxlength="2"
-                                   onkeydown="if(event.key==='.'||event.key===',')event.preventDefault();"
-                                   oninput="if(this.value.length>this.maxLength)this.value=this.value.slice(0,this.maxLength);"
-                                   :value="$machine->power_phase" placeholder="3"
-                                   hint="Angka bulat phase listrik. Maks. 2 digit (contoh: 1 atau 3)." />
-
-                    {{-- Dimensi panjang: desimal pakai titik, maxlength 7 karakter, blokir koma --}}
-                    <x-admin.input name="dimension_length" label="Panjang (cm)" type="number" step="any" min="0" max="99999" maxlength="7"
-                                   onkeydown="if(event.key===',')event.preventDefault();"
-                                   oninput="if(this.value.length>this.maxLength)this.value=this.value.slice(0,this.maxLength);"
-                                   :value="$machine->dimension_length" placeholder="180"
-                                   hint="Hanya angka, titik (.) untuk desimal. Maks. 7 karakter." />
-
-                    {{-- Dimensi lebar --}}
-                    <x-admin.input name="dimension_width" label="Lebar (cm)" type="number" step="any" min="0" max="99999" maxlength="7"
-                                   onkeydown="if(event.key===',')event.preventDefault();"
-                                   oninput="if(this.value.length>this.maxLength)this.value=this.value.slice(0,this.maxLength);"
-                                   :value="$machine->dimension_width" placeholder="90"
-                                   hint="Hanya angka, titik (.) untuk desimal. Maks. 7 karakter." />
-
-                    {{-- Dimensi tinggi --}}
-                    <x-admin.input name="dimension_height" label="Tinggi (cm)" type="number" step="any" min="0" max="99999" maxlength="7"
-                                   onkeydown="if(event.key===',')event.preventDefault();"
-                                   oninput="if(this.value.length>this.maxLength)this.value=this.value.slice(0,this.maxLength);"
-                                   :value="$machine->dimension_height" placeholder="140"
-                                   hint="Hanya angka, titik (.) untuk desimal. Maks. 7 karakter." />
-
-                    {{-- Berat: desimal pakai titik, maxlength 8 karakter, blokir koma --}}
-                    <x-admin.input name="weight_amount" label="Berat (kg)" type="number" step="any" min="0" max="999999" maxlength="8"
-                                   onkeydown="if(event.key===',')event.preventDefault();"
-                                   oninput="if(this.value.length>this.maxLength)this.value=this.value.slice(0,this.maxLength);"
-                                   :value="$machine->weight_amount" placeholder="320"
-                                   hint="Hanya angka, titik (.) untuk desimal. Maks. 8 karakter." />
+                    <x-admin.textarea name="specifications" label="Spesifikasi tambahan" :value="$machine->specifications" :rows="7"
+                                      maxlength="375"
+                                      placeholder="Jumlah sekat: 3 tingkat&#10;Pembalikan: Manual&#10;Drainase: Lubang bawah dengan kasa"
+                                      hint="Maksimal 375 karakter. Satu baris satu spesifikasi, format: Label: Nilai." />
                 </div>
-
-                <x-admin.textarea name="specifications" label="Spesifikasi tambahan" :value="$machine->specifications" :rows="5"
-                                  maxlength="375"
-                                  hint="Maksimal 375 karakter. Satu baris satu spesifikasi, format: Label: Nilai." />
-
-                <x-admin.textarea name="description" label="Deskripsi lengkap" :value="$machine->description" :rows="6"
-                                  maxlength="500"
-                                  hint="Maksimal 500 karakter. Satu baris kosong memisahkan paragraf pada halaman detail produk." />
             </div>
 
             {{-- Foto utama --}}

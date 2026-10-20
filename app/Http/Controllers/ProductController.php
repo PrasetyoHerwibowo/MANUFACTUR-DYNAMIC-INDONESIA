@@ -16,7 +16,7 @@ class ProductController extends Controller
     public function index(Request $request): View
     {
         try {
-            $categories = Cache::remember('products_categories', 1800, function () {
+            $categories = Cache::remember('site_active_categories', 3600, function () {
                 return Category::query()
                     ->active()
                     ->ordered()
@@ -25,25 +25,46 @@ class ProductController extends Controller
             });
 
             $activeCategory = null;
+            $selectedCategorySlug = (string) $request->input('kategori');
 
-            $machines = Machine::query()
-                ->active()
-                ->with(['category', 'images'])
-                ->when($request->filled('kategori'), function ($query) use ($request, &$activeCategory) {
-                    $activeCategory = Category::query()->where('slug', $request->string('kategori'))->first();
-                    $query->whereHas('category', fn ($sub) => $sub->where('slug', $request->string('kategori')));
-                })
-                ->when($request->filled('q'), function ($query) use ($request) {
-                    $keyword = '%'.$request->string('q').'%';
-                    $query->where(function ($sub) use ($keyword) {
-                        $sub->where('name', 'like', $keyword)
-                            ->orWhere('model_code', 'like', $keyword)
-                            ->orWhere('function', 'like', $keyword);
-                    });
-                })
-                ->ordered()
-                ->paginate(9)
-                ->withQueryString();
+            if ($selectedCategorySlug !== '') {
+                $activeCategory = $categories->firstWhere('slug', $selectedCategorySlug);
+            }
+
+            $page = $request->integer('page', 1);
+            $hasFilter = $request->filled('q') || $request->filled('kategori') || $page > 1;
+
+            if (! $hasFilter) {
+                $machines = Cache::remember('products_default_page_1', 3600, function () {
+                    return Machine::query()
+                        ->active()
+                        ->with(['category', 'images'])
+                        ->ordered()
+                        ->paginate(9);
+                });
+            } else {
+                $machines = Machine::query()
+                    ->active()
+                    ->with(['category', 'images'])
+                    ->when($activeCategory, function ($query) use ($activeCategory) {
+                        $query->where('category_id', $activeCategory->id);
+                    }, function ($query) use ($selectedCategorySlug) {
+                        if ($selectedCategorySlug !== '') {
+                            $query->whereHas('category', fn ($sub) => $sub->where('slug', $selectedCategorySlug));
+                        }
+                    })
+                    ->when($request->filled('q'), function ($query) use ($request) {
+                        $keyword = '%'.$request->string('q').'%';
+                        $query->where(function ($sub) use ($keyword) {
+                            $sub->where('name', 'like', $keyword)
+                                ->orWhere('model_code', 'like', $keyword)
+                                ->orWhere('function', 'like', $keyword);
+                        });
+                    })
+                    ->ordered()
+                    ->paginate(9)
+                    ->withQueryString();
+            }
 
             return view('public.products.index', compact('categories', 'machines', 'activeCategory'));
         } catch (\Throwable $e) {
@@ -65,16 +86,20 @@ class ProductController extends Controller
         abort_unless($machine->is_active, 404);
 
         try {
-            $machine->load(['category', 'images']);
+            if (! $machine->relationLoaded('category') || ! $machine->relationLoaded('images')) {
+                $machine->load(['category', 'images']);
+            }
 
-            $related = Machine::query()
-                ->active()
-                ->where('category_id', $machine->category_id)
-                ->whereKeyNot($machine->getKey())
-                ->with(['category', 'images'])
-                ->ordered()
-                ->take(3)
-                ->get();
+            $related = Cache::remember("machine_related_{$machine->id}", 3600, function () use ($machine) {
+                return Machine::query()
+                    ->active()
+                    ->where('category_id', $machine->category_id)
+                    ->whereKeyNot($machine->getKey())
+                    ->with(['category', 'images'])
+                    ->ordered()
+                    ->take(3)
+                    ->get();
+            });
 
             return view('public.products.show', compact('machine', 'related'));
         } catch (\Throwable $e) {

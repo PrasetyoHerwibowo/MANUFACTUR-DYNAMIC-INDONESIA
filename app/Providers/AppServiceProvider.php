@@ -21,8 +21,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Profil perusahaan tersedia di seluruh view ({{ $company->name }}).
-        View::composer('*', function ($view): void {
+        // Profil perusahaan tersedia di seluruh view utama & layout ({{ $company->name }}).
+        View::composer(['public.*', 'admin.*', 'layouts.*', 'mail.*', 'errors.*'], function ($view): void {
             $view->with('company', Site::company());
         });
     }

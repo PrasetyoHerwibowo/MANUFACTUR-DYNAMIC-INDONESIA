@@ -56,24 +56,25 @@
                     @if ($machine->function)
                         <div class="mt-5 rounded-xl bg-stone-50 dark:bg-gray-800/40 p-4 min-w-0">
                             <p class="text-xs font-bold uppercase tracking-wide text-stone-400 dark:text-gray-500">Fungsi Mesin</p>
-                            <p class="mt-2 text-sm leading-relaxed text-stone-600 dark:text-gray-300 break-all">{{ $machine->function }}</p>
+                            <p class="mt-2 text-sm leading-relaxed text-stone-600 dark:text-gray-300 break-words">{{ $machine->function }}</p>
                         </div>
                     @endif
-                    <div class="mt-5 space-y-2.5 text-sm">
-                        @foreach ([
-                            'Kapasitas' => $machine->capacity,
-                            'Daya' => $machine->power,
-                            'Dimensi' => $machine->dimension,
-                            'Berat' => $machine->weight,
-                        ] as $label => $value)
-                            @if (filled($value))
-                                <div class="grid grid-cols-3 gap-4 border-b border-dashed border-stone-200 dark:border-gray-700 pb-2 last:border-0 min-w-0">
-                                    <span class="text-stone-500 dark:text-gray-400">{{ $label }}</span>
-                                    <span class="col-span-2 text-right font-semibold text-stone-800 dark:text-white break-all min-w-0">{{ $value }}</span>
-                                </div>
-                            @endif
-                        @endforeach
-                    </div>
+
+                    @if (! empty($machine->specificationLines()))
+                        <div class="mt-5 space-y-2.5 text-sm">
+                            <div class="border-b border-dashed border-stone-200 dark:border-gray-700 pb-2">
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-stone-400 dark:text-gray-500">Spesifikasi Tambahan</h3>
+                            </div>
+                            <dl class="space-y-2.5">
+                                @foreach ($machine->specificationLines() as $label => $value)
+                                    <div class="grid grid-cols-3 gap-4 border-b border-dashed border-stone-200 dark:border-gray-700 pb-2 last:border-0 min-w-0">
+                                        <dt class="text-stone-500 dark:text-gray-400">{{ $label }}</dt>
+                                        <dd class="col-span-2 text-right font-semibold text-stone-800 dark:text-white break-words min-w-0">{{ $value }}</dd>
+                                    </div>
+                                @endforeach
+                            </dl>
+                        </div>
+                    @endif
 
                     <div class="mt-6 space-y-2.5">
                         @php $wa = preg_replace('/[^0-9]/', '', (string) $company->whatsapp); @endphp
@@ -91,37 +92,18 @@
             </aside>
         </div>
 
-        {{-- Deskripsi & spesifikasi --}}
-        @if ($machine->description || ! empty($machine->specificationLines()))
-            <div class="mt-14 grid gap-10 {{ $machine->description && ! empty($machine->specificationLines()) ? 'lg:grid-cols-3' : 'grid-cols-1' }}">
-                @if ($machine->description)
-                    <div class="{{ ! empty($machine->specificationLines()) ? 'lg:col-span-2' : 'max-w-4xl' }} min-w-0">
-                        <h3 class="text-xl font-extrabold text-stone-900 dark:text-white">Deskripsi &amp; keunggulan</h3>
+        {{-- Deskripsi & keunggulan --}}
+        @if ($machine->description)
+            <div class="mt-12 rounded-3xl border border-stone-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 sm:p-8 shadow-sm">
+                <h3 class="text-xl font-extrabold text-stone-900 dark:text-white">Deskripsi &amp; keunggulan</h3>
 
-                        <div class="mt-4 space-y-4 text-sm leading-relaxed text-stone-600 dark:text-gray-300">
-                            @foreach (preg_split('/\r\n|\r|\n/', $machine->description) as $paragraph)
-                                @if (trim($paragraph) !== '')
-                                    <p class="break-all">{{ trim($paragraph) }}</p>
-                                @endif
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-
-                @if (! empty($machine->specificationLines()))
-                    <div class="{{ $machine->description ? 'rounded-2xl border border-stone-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm' : 'max-w-2xl' }} min-w-0">
-                        <h3 class="text-base font-extrabold text-stone-900 dark:text-white">Spesifikasi tambahan</h3>
-
-                        <dl class="mt-4 space-y-3 text-sm">
-                            @foreach ($machine->specificationLines() as $label => $value)
-                                <div class="grid grid-cols-3 gap-4 border-b border-dashed border-stone-200 dark:border-gray-700 pb-2 last:border-0 min-w-0">
-                                    <dt class="text-stone-500 dark:text-gray-400">{{ $label }}</dt>
-                                    <dd class="col-span-2 text-right font-semibold text-stone-800 dark:text-white break-all min-w-0">{{ $value }}</dd>
-                                </div>
-                            @endforeach
-                        </dl>
-                    </div>
-                @endif
+                <div class="mt-4 space-y-4 text-sm sm:text-base leading-relaxed text-stone-600 dark:text-gray-300">
+                    @foreach (preg_split('/\r\n|\r|\n/', $machine->description) as $paragraph)
+                        @if (trim($paragraph) !== '')
+                            <p class="break-words">{{ trim($paragraph) }}</p>
+                        @endif
+                    @endforeach
+                </div>
             </div>
         @endif
 

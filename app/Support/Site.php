@@ -46,10 +46,12 @@ class Site
      */
     public static function flushPublicCache(): void
     {
+        Cache::forget('site_active_categories');
         Cache::forget('home_categories');
         Cache::forget('home_featured');
         Cache::forget('home_stats');
         Cache::forget('products_categories');
+        Cache::forget('products_default_page_1');
         static::flushAdminDashboardCache();
     }
 

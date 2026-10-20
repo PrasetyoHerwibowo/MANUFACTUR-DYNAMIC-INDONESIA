@@ -14,7 +14,7 @@ class PageController extends Controller
     public function about(): View
     {
         try {
-            $categories = Cache::remember('products_categories', 1800, function () {
+            $categories = Cache::remember('site_active_categories', 3600, function () {
                 return Category::query()
                     ->active()
                     ->ordered()
