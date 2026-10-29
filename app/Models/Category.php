@@ -13,7 +13,9 @@ class Category extends Model
 {
     protected $fillable = [
         'name',
+        'series',
         'slug',
+        'image',
         'tagline',
         'description',
         'sort_order',
@@ -24,6 +26,22 @@ class Category extends Model
         'is_active' => 'boolean',
         'sort_order' => 'integer',
     ];
+
+    /**
+     * URL foto jenis mesin (dari disk uploads / storage).
+     */
+    public function imageUrl(): ?string
+    {
+        if (! filled($this->image)) {
+            return null;
+        }
+
+        if (str_starts_with($this->image, 'http://') || str_starts_with($this->image, 'https://')) {
+            return $this->image;
+        }
+
+        return \App\Support\ImageUploader::url($this->image);
+    }
 
     /**
      * Nilai default form saat menambah data baru.
@@ -53,5 +71,42 @@ class Category extends Model
     public function scopeOrdered(Builder $query): Builder
     {
         return $query->orderBy('sort_order')->orderBy('name');
+    }
+
+    public function scopeForCoffee(Builder $query): Builder
+    {
+        return $query->where(function ($q) {
+            $q->where('series', 'coffee')
+              ->orWhere('series', 'both')
+              ->orWhere(function ($sub) {
+                  $sub->whereNull('series')
+                      ->where(function ($inner) {
+                          $inner->where('name', 'like', '%kopi%')
+                                ->orWhere('name', 'like', '%coffee%')
+                                ->orWhere('slug', 'like', '%kopi%')
+                                ->orWhere(function ($notCocoa) {
+                                    $notCocoa->where('name', 'not like', '%kakao%')
+                                             ->where('name', 'not like', '%cocoa%');
+                                });
+                      });
+              });
+        });
+    }
+
+    public function scopeForCocoa(Builder $query): Builder
+    {
+        return $query->where(function ($q) {
+            $q->where('series', 'cocoa')
+              ->orWhere('series', 'both')
+              ->orWhere(function ($sub) {
+                  $sub->whereNull('series')
+                      ->where(function ($inner) {
+                          $inner->where('name', 'like', '%kakao%')
+                                ->orWhere('name', 'like', '%cocoa%')
+                                ->orWhere('name', 'like', '%cokelat%')
+                                ->orWhere('slug', 'like', '%kakao%');
+                      });
+              });
+        });
     }
 }

@@ -21,9 +21,22 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
+Route::get('/storage/image/{filename}', function (string $filename) {
+    $path = base_path('storage/image/'.$filename);
+    if (! file_exists($path)) {
+        abort(404);
+    }
+    return response()->file($path);
+})->where('filename', '.*');
+
 Route::get('/tentang-kami', [PageController::class, 'about'])->name('about');
 
 Route::get('/produk', [ProductController::class, 'index'])->name('products.index');
+Route::get('/produk/cocoa-series', [ProductController::class, 'cocoaSeries'])->name('products.cocoa');
+Route::get('/produk/coffee-series', [ProductController::class, 'coffeeSeries'])->name('products.coffee');
+Route::redirect('/produk/kakao', '/produk/cocoa-series', 301);
+Route::redirect('/produk/kopi', '/produk/coffee-series', 301);
+Route::redirect('/produk/coffe-series', '/produk/coffee-series', 301);
 Route::get('/produk/{machine}', [ProductController::class, 'show'])->name('products.show');
 
 Route::get('/kontak', [PageController::class, 'contact'])->name('contact');

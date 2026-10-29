@@ -18,14 +18,16 @@ class Site
      */
     public static function company(): CompanyProfile
     {
-        if (static::$company === null) {
-            try {
-                static::$company = Cache::remember('site_company_profile', 86400, function (): CompanyProfile {
-                    return CompanyProfile::query()->first() ?? new CompanyProfile();
-                });
-            } catch (Throwable) {
-                static::$company = new CompanyProfile();
-            }
+        if (static::$company !== null) {
+            return static::$company;
+        }
+
+        try {
+            static::$company = Cache::remember('site_company_profile', 3600, function (): CompanyProfile {
+                return CompanyProfile::query()->first() ?? new CompanyProfile();
+            });
+        } catch (Throwable) {
+            static::$company = new CompanyProfile();
         }
 
         return static::$company;
@@ -49,9 +51,14 @@ class Site
         Cache::forget('site_active_categories');
         Cache::forget('home_categories');
         Cache::forget('home_featured');
+        Cache::forget('home_cocoa_category');
+        Cache::forget('home_coffee_category');
+        Cache::forget('home_cocoa_categories');
+        Cache::forget('home_coffee_categories');
+        Cache::forget('home_cocoa_machines');
+        Cache::forget('home_coffee_machines');
         Cache::forget('home_stats');
         Cache::forget('products_categories');
-        Cache::forget('products_default_page_1');
         static::flushAdminDashboardCache();
     }
 

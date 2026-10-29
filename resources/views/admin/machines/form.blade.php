@@ -21,8 +21,15 @@
             <div class="space-y-5 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-7 dark:border-slate-700 dark:bg-slate-900">
                 <h2 class="text-base font-extrabold text-stone-900 dark:text-white">Data utama</h2>
 
-                <x-admin.select name="category_id" label="Jenis mesin" :options="$categories->pluck('name', 'id')"
-                                :selected="$machine->category_id" placeholder="— Pilih jenis mesin —" required />
+                <div class="grid gap-5 sm:grid-cols-2">
+                    <x-admin.select name="category_id" label="Jenis mesin" :options="$categories->pluck('name', 'id')"
+                                    :selected="$machine->category_id" placeholder="— Pilih jenis mesin —" required />
+
+                    <x-admin.select name="series" label="Lini / Seri Produk (Dropdown Menu)"
+                                    :options="['' => 'Otomatis (Ikuti Jenis Mesin)', 'coffee' => 'MD-Coffee Series (Mesin Kopi)', 'cocoa' => 'MD-Cocoa Series (Mesin Kakao)', 'both' => 'Keduanya (Kopi & Kakao)']"
+                                    :selected="old('series', $machine->series)"
+                                    hint="Pilih apakah model mesin ini masuk ke menu Kopi, Kakao, atau keduanya." />
+                </div>
 
                 <div class="grid gap-5 sm:grid-cols-2">
                     <x-admin.input name="name" label="Nama model mesin" :value="$machine->name" required
