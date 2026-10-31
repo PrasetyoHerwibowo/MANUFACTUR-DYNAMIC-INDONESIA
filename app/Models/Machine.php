@@ -14,6 +14,7 @@ class Machine extends Model
 {
     protected $fillable = [
         'category_id',
+        'series',
         'name',
         'slug',
         'model_code',
@@ -92,6 +93,53 @@ class Machine extends Model
     public function scopeOrdered(Builder $query): Builder
     {
         return $query->orderBy('sort_order')->orderBy('name');
+    }
+
+    public function scopeForCoffee(Builder $query): Builder
+    {
+        return $query->where(function ($q) {
+            $q->where('series', 'coffee')
+              ->orWhere('series', 'both')
+              ->orWhere(function ($sub) {
+                  $sub->whereNull('series')
+                      ->where(function ($inner) {
+                          $inner->where('name', 'like', '%kopi%')
+                                ->orWhere('name', 'like', '%coffee%')
+                                ->orWhere('function', 'like', '%kopi%')
+                                ->orWhere('function', 'like', '%coffee%')
+                                ->orWhereHas('category', function ($cat) {
+                                    $cat->where('series', 'coffee')
+                                        ->orWhere('series', 'both')
+                                        ->orWhere('name', 'like', '%kopi%')
+                                        ->orWhere('slug', 'like', '%kopi%');
+                                });
+                      });
+              });
+        });
+    }
+
+    public function scopeForCocoa(Builder $query): Builder
+    {
+        return $query->where(function ($q) {
+            $q->where('series', 'cocoa')
+              ->orWhere('series', 'both')
+              ->orWhere(function ($sub) {
+                  $sub->whereNull('series')
+                      ->where(function ($inner) {
+                          $inner->where('name', 'like', '%kakao%')
+                                ->orWhere('name', 'like', '%cocoa%')
+                                ->orWhere('name', 'like', '%cokelat%')
+                                ->orWhere('function', 'like', '%kakao%')
+                                ->orWhere('function', 'like', '%cocoa%')
+                                ->orWhereHas('category', function ($cat) {
+                                    $cat->where('series', 'cocoa')
+                                        ->orWhere('series', 'both')
+                                        ->orWhere('name', 'like', '%kakao%')
+                                        ->orWhere('slug', 'like', '%kakao%');
+                                });
+                      });
+              });
+        });
     }
 
     public function mainImageUrl(): ?string

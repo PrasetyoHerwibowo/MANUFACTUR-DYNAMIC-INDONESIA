@@ -281,8 +281,27 @@ class MachineController extends Controller
             'weight' => ['nullable', 'string', 'max:'.self::LENGTHS['weight']],
             'specifications' => ['nullable', 'string', 'max:'.self::LENGTHS['specifications']],
             'description' => ['nullable', 'string', 'max:'.self::LENGTHS['description']],
+            'series' => ['nullable', 'string', 'in:coffee,cocoa,both'],
             'main_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:6144'],
         ], $this->messages());
+
+        $series = $request->input('series');
+        if (empty($series)) {
+            $cat = Category::find($categoryId);
+            $lower = strtolower($request->input('name').' '.$request->input('function'));
+            if (str_contains($lower, 'kakao') && str_contains($lower, 'kopi')) {
+                $series = 'both';
+            } elseif (str_contains($lower, 'kakao') || str_contains($lower, 'cocoa')) {
+                $series = 'cocoa';
+            } elseif (str_contains($lower, 'kopi') || str_contains($lower, 'coffee') || str_contains($lower, 'roaster')) {
+                $series = 'coffee';
+            } else {
+                $series = $cat?->series ?? 'both';
+            }
+        }
+        $validated['series'] = $series;
+
+        return $validated;
     }
 
     /**

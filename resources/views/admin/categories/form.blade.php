@@ -10,6 +10,7 @@
     <div class="max-w-3xl">
         <form method="POST"
               action="{{ $isEdit ? route('admin.categories.update', $category) : route('admin.categories.store') }}"
+              enctype="multipart/form-data"
               class="space-y-5 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-7 dark:border-slate-700 dark:bg-slate-900">
             @csrf
             @if ($isEdit)
@@ -27,6 +28,14 @@
                 hint="Hanya huruf, spasi, tanda hubung (-), dan tanda &. Maksimal 100 karakter. Tidak boleh sama dengan jenis mesin lain."
                 data-input-filter="letter"
                 placeholder="Contoh: Mesin Pengolahan Kopi"
+            />
+
+            <x-admin.select
+                name="series"
+                label="Lini / Seri Produk (Dropdown Menu)"
+                :options="['coffee' => 'MD-Coffee Series (Mesin Kopi)', 'cocoa' => 'MD-Cocoa Series (Mesin Kakao)', 'both' => 'Keduanya (Kopi & Kakao)']"
+                :selected="old('series', $category->series ?? 'both')"
+                hint="Menentukan apakah jenis mesin ini masuk ke menu MD-Coffee Series, MD-Cocoa Series, atau keduanya."
             />
 
             <x-admin.input
@@ -49,6 +58,13 @@
                 maxlength="150"
                 hint="Huruf, angka, dan tanda baca diperbolehkan. Maksimal 150 karakter. Simbol seperti @ # $ % ^ * serta karakter pembentuk tag HTML otomatis diabaikan saat diketik."
                 data-input-filter="punctuation"
+            />
+
+            <x-admin.file
+                name="image"
+                label="Foto jenis mesin"
+                :current="$category->imageUrl()"
+                hint="Format JPG, PNG, atau WEBP. Maksimal 6 MB. Foto jenis mesin akan disimpan di direktori image_mesin."
             />
 
             <div class="flex flex-wrap items-center gap-3 border-t border-stone-200 pt-5 dark:border-slate-700">
