@@ -37,14 +37,20 @@ class MachineApiController extends Controller
             }
 
             $machines = $query->latest('id')->get()->map(function ($m) {
+                $categoryName = $m->category?->name ?? 'Mesin Pengolahan Kopi';
+                $isKakao = str_contains(strtolower($m->name . ' ' . $categoryName), 'kakao');
+                $isHulu = str_contains(strtolower($m->name . ' ' . $m->function), 'pulper') || str_contains(strtolower($m->name . ' ' . $m->function), 'huller') || str_contains(strtolower($m->name . ' ' . $m->function), 'fermentasi') || str_contains(strtolower($m->name . ' ' . $m->function), 'pengering');
+
                 return [
                     'id' => $m->id,
                     'name' => $m->name,
                     'slug' => $m->slug,
                     'model_code' => $m->model_code,
-                    'category' => $m->category?->name ?? 'Mesin Industri',
+                    'category' => $categoryName,
                     'category_id' => $m->category_id,
-                    'price' => (float) ($m->price ?? 145000000),
+                    'commodity' => $isKakao ? 'Kakao' : 'Kopi',
+                    'process_stage' => $isHulu ? 'Hulu' : 'Hilir',
+                    'price' => (float) ($m->price ?? ($m->id == 1 ? 145000000 : ($m->id == 2 ? 85000000 : ($m->id == 3 ? 120000000 : 75000000)))),
                     'function' => $m->function,
                     'description' => $m->description,
                     'capacity' => $m->capacity,
@@ -52,7 +58,7 @@ class MachineApiController extends Controller
                     'dimension' => $m->dimension,
                     'weight' => $m->weight,
                     'specifications' => $m->specifications,
-                    'image_url' => $m->primaryImageUrl() ?? $m->photo ?? 'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?w=800&auto=format&fit=crop&q=80',
+                    'image_url' => $this->resolveMachineImage($m),
                     'images' => $m->images->map(fn($img) => $img->imageUrl())->toArray(),
                     'rating' => 4.9,
                     'is_ready_stock' => true,
@@ -150,5 +156,39 @@ class MachineApiController extends Controller
                 'error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
+    }
+
+    /**
+     * Resolusi URL foto mesin berkualitas tinggi untuk mobile app
+     */
+    private function resolveMachineImage(Machine $m): string
+    {
+        $primary = $m->primaryImageUrl();
+        if ($primary && !str_contains($primary, 'placeholder.svg')) {
+            return $primary;
+        }
+
+        $name = strtolower($m->name . ' ' . $m->model_code . ' ' . ($m->category?->name ?? ''));
+
+        if (str_contains($name, 'roast') || str_contains($name, 'sangrai')) {
+            return 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=800&auto=format&fit=crop&q=80';
+        }
+        if (str_contains($name, 'pulper') || str_contains($name, 'basah')) {
+            return 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800&auto=format&fit=crop&q=80';
+        }
+        if (str_contains($name, 'huller') || str_contains($name, 'kering')) {
+            return 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=800&auto=format&fit=crop&q=80';
+        }
+        if (str_contains($name, 'kakao') || str_contains($name, 'fermentasi') || str_contains($name, 'pengering')) {
+            return 'https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=800&auto=format&fit=crop&q=80';
+        }
+        if (str_contains($name, 'grinder') || str_contains($name, 'penepung')) {
+            return 'https://images.unsplash.com/photo-1587080413959-06b859fb107d?w=800&auto=format&fit=crop&q=80';
+        }
+        if (str_contains($name, 'espresso') || str_contains($name, 'craft')) {
+            return 'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?w=800&auto=format&fit=crop&q=80';
+        }
+
+        return 'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?w=800&auto=format&fit=crop&q=80';
     }
 }
