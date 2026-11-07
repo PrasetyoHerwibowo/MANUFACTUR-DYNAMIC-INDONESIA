@@ -65,6 +65,17 @@ class Order extends Model
         'pelunasan_amount' => 0,
     ];
 
+    protected static function booted(): void
+    {
+        static::saved(function () {
+            \Illuminate\Support\Facades\Cache::forget('admin_orders_stats');
+        });
+
+        static::deleted(function () {
+            \Illuminate\Support\Facades\Cache::forget('admin_orders_stats');
+        });
+    }
+
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
@@ -160,12 +171,15 @@ class Order extends Model
 
     public function syncStatusFromPayments(): void
     {
-        $paid = $this->payments()->where('status', Payment::STATUS_LUNAS)->latest('paid_at')->first();
+        $totalPaid = (float) $this->payments()->where('status', Payment::STATUS_LUNAS)->sum('amount');
+        $isFullyPaid = ($totalPaid >= (float) $this->total_amount && (float) $this->total_amount > 0)
+            || $this->production_status === self::STAGE_AFTER_SALES;
 
-        if ($paid) {
+        if ($isFullyPaid) {
+            $latestPaid = $this->payments()->where('status', Payment::STATUS_LUNAS)->latest('paid_at')->first();
             $this->forceFill([
                 'status' => self::STATUS_LUNAS,
-                'paid_at' => $paid->paid_at ?? now(),
+                'paid_at' => $latestPaid?->paid_at ?? now(),
             ])->save();
 
             return;
@@ -183,7 +197,7 @@ class Order extends Model
             return;
         }
 
-        if ($this->payments()->exists()) {
+        if ($this->payments()->exists() && $totalPaid == 0) {
             $this->forceFill([
                 'status' => self::STATUS_GAGAL,
                 'paid_at' => null,

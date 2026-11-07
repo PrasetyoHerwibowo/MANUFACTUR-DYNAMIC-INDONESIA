@@ -12,15 +12,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement('ALTER TABLE customers ALTER COLUMN phone DROP NOT NULL');
-        DB::statement('ALTER TABLE customers DROP CONSTRAINT IF EXISTS customers_phone_unique');
-        DB::statement("UPDATE customers SET phone = NULL WHERE phone = '-'");
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('ALTER TABLE customers ALTER COLUMN phone DROP NOT NULL');
+            DB::statement('ALTER TABLE customers DROP CONSTRAINT IF EXISTS customers_phone_unique');
+            DB::statement("UPDATE customers SET phone = NULL WHERE phone = '-'");
+        }
     }
 
     public function down(): void
     {
-        DB::statement("UPDATE customers SET phone = '-' WHERE phone IS NULL");
-        DB::statement('ALTER TABLE customers ALTER COLUMN phone SET NOT NULL');
-        DB::statement('ALTER TABLE customers ADD CONSTRAINT customers_phone_unique UNIQUE (phone)');
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement("UPDATE customers SET phone = '-' WHERE phone IS NULL");
+            DB::statement('ALTER TABLE customers ALTER COLUMN phone SET NOT NULL');
+            DB::statement('ALTER TABLE customers ADD CONSTRAINT customers_phone_unique UNIQUE (phone)');
+        }
     }
 };

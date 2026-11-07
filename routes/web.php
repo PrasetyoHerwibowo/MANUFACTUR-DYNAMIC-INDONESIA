@@ -75,6 +75,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('pesanan/{order}', [AdminOrderController::class, 'destroy'])->name('orders.destroy');
         Route::post('pesanan/{order}/pembayaran-baru', [AdminOrderController::class, 'renewPayment'])
             ->name('orders.payments.renew');
+        Route::put('pesanan/{order}/verifikasi-bukti', [AdminOrderController::class, 'verifyProof'])
+            ->name('orders.proof.verify');
+        Route::put('pesanan/{order}/tahap-produksi', [AdminOrderController::class, 'updateProductionStage'])
+            ->name('orders.stage.update');
 
         // Pembayaran: verifikasi lunas atau tandai gagal.
         Route::put('pembayaran/{payment}/lunas', [AdminOrderController::class, 'verifyPayment'])

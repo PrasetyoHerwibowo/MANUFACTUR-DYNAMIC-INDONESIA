@@ -58,6 +58,17 @@ class Payment extends Model
         'attempt' => 1,
     ];
 
+    protected static function booted(): void
+    {
+        static::saved(function () {
+            \Illuminate\Support\Facades\Cache::forget('admin_orders_stats');
+        });
+
+        static::deleted(function () {
+            \Illuminate\Support\Facades\Cache::forget('admin_orders_stats');
+        });
+    }
+
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);

@@ -111,6 +111,53 @@ class SupabaseStorageService
     }
 
     /**
+     * Upload berkas binary/string ke Supabase Storage dan kembalikan Public URL.
+     */
+    public function uploadRaw(string $binaryContent, string $filename, string $mime = 'image/png', string $folder = 'payments'): ?string
+    {
+        if (empty($binaryContent) || ! $this->isConfigured()) {
+            return null;
+        }
+
+        $extension = self::ALLOWED_MIME_TYPES[$mime] ?? 'png';
+        $safeName = Str::slug(pathinfo($filename, PATHINFO_FILENAME));
+        $safeName = Str::limit($safeName ?: 'proof', 40, '');
+        $savedFilename = $safeName . '-' . Str::lower(Str::random(12)) . '.' . $extension;
+
+        $cleanFolder = trim(preg_replace('/[^a-zA-Z0-9_\-\/]/', '', $folder), '/');
+        $path = $cleanFolder !== '' ? "{$cleanFolder}/{$savedFilename}" : $savedFilename;
+
+        try {
+            $endpoint = "{$this->url}/storage/v1/object/{$this->bucket}/{$path}";
+
+            $response = Http::withHeaders([
+                'apikey' => $this->key,
+                'Authorization' => "Bearer {$this->key}",
+                'Content-Type' => $mime,
+            ])
+            ->timeout(20)
+            ->withBody($binaryContent, $mime)
+            ->post($endpoint);
+
+            if (! $response->successful()) {
+                Log::error('SupabaseStorageService: Gagal upload raw ke Supabase', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                    'path' => $path,
+                ]);
+                return null;
+            }
+
+            return $this->getPublicUrl($path);
+        } catch (Exception $e) {
+            Log::error('SupabaseStorageService uploadRaw Exception: ' . $e->getMessage(), [
+                'filename' => $filename,
+            ]);
+            return null;
+        }
+    }
+
+    /**
      * Hapus berkas gambar dari Supabase Storage jika merupakan URL Supabase.
      */
     public function delete(?string $urlOrPath): bool

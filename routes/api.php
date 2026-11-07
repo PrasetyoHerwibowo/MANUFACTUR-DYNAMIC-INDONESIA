@@ -60,7 +60,7 @@ Route::middleware('throttle:15,1')->group(function () {
 // 2. PROTECTED ROUTES (Wajib Login & Menggunakan Sanctum Bearer Token)
 // Halaman Pesanan, Pembayaran, Servis & Garansi
 // ==========================================================
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'api.customer'])->group(function () {
     // Sesi & Profil Pengguna
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);

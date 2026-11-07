@@ -27,15 +27,20 @@ class OrderApiController extends Controller
             $user = $request->user();
             $customer = Customer::where('email', $user?->email)->first();
 
-            $query = Order::with(['items.machine', 'payments', 'customer'])->latest('id');
-
-            if ($customer) {
-                $query->where('customer_id', $customer->id);
+            if (! $customer) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [],
+                ]);
             }
 
-            $orders = $query->get()->map(function ($order) {
-                return $this->formatOrderResponse($order);
-            });
+            $orders = Order::with(['items.machine', 'payments', 'customer'])
+                ->where('customer_id', $customer->id)
+                ->latest('id')
+                ->get()
+                ->map(function ($order) {
+                    return $this->formatOrderResponse($order);
+                });
 
             return response()->json([
                 'success' => true,
@@ -55,12 +60,25 @@ class OrderApiController extends Controller
     /**
      * GET /api/orders/{id}
      */
-    public function show(string $id): JsonResponse
+    public function show(Request $request, string $id): JsonResponse
     {
         try {
+            $user = $request->user();
+            $customer = Customer::where('email', $user?->email)->first();
+
+            if (! $customer) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pesanan tidak ditemukan.',
+                ], 404);
+            }
+
             $order = Order::with(['items.machine', 'payments', 'customer'])
-                ->where('id', is_numeric($id) ? (int)$id : 0)
-                ->orWhere('order_code', $id)
+                ->where('customer_id', $customer->id)
+                ->where(function ($q) use ($id) {
+                    $q->where('id', is_numeric($id) ? (int)$id : 0)
+                      ->orWhere('order_code', $id);
+                })
                 ->first();
 
             if (! $order) {
@@ -98,6 +116,7 @@ class OrderApiController extends Controller
             'custom_notes' => ['nullable', 'string'],
             'bank_method' => ['nullable', 'string'],
             'dp_proof' => ['nullable', 'string'],
+            'dp_proof_file' => ['nullable', 'file', 'image', 'max:5120'],
         ]);
 
         try {
@@ -124,10 +143,20 @@ class OrderApiController extends Controller
                 $orderCode = 'PO-' . date('Ymd') . '-' . strtoupper(Str::random(6));
             } while (Order::where('order_code', $orderCode)->exists());
 
+            // Upload bukti transfer DP 50% ke Supabase Storage
+            $dpProofUrl = $this->resolveAndStoreProof(
+                $validated['dp_proof'] ?? null,
+                $request->file('dp_proof_file'),
+                $orderCode,
+                $dpAmount,
+                $validated['bank_method'] ?? 'Bank BCA Corporate'
+            );
+
             $order = DB::transaction(function () use (
                 $customer, $orderCode, $totalAmount, $dpAmount, $pelunasanAmount,
-                $validated, $machine, $unitPrice
+                $validated, $machine, $unitPrice, $dpProofUrl
             ) {
+                // Status awal saat ada bukti DP: Menunggu Pembayaran & Tahap Timeline: Verifikasi DP
                 $order = Order::create([
                     'customer_id' => $customer->id,
                     'order_code' => $orderCode,
@@ -136,10 +165,10 @@ class OrderApiController extends Controller
                     'pelunasan_amount' => $pelunasanAmount,
                     'status' => Order::STATUS_MENUNGGU_PEMBAYARAN,
                     'production_status' => Order::STAGE_VERIFIKASI_DP,
-                    'dp_proof' => $validated['dp_proof'] ?? null,
+                    'dp_proof' => $dpProofUrl,
                     'delivery_address' => $validated['delivery_address'],
                     'custom_notes' => $validated['custom_notes'] ?? null,
-                    'payment_deadline' => now()->addHours(12),
+                    'payment_deadline' => now()->addHours(24),
                 ]);
 
                 OrderItem::create([
@@ -150,24 +179,18 @@ class OrderApiController extends Controller
                     'subtotal' => $totalAmount,
                 ]);
 
-                // Buat record pembayaran DP 50%
+                // Buat record pembayaran DP 50% (status menunggu sampai diverifikasi oleh admin)
                 $order->payments()->create([
                     'payment_code' => Reference::make(Reference::PAYMENT, Payment::class, 'payment_code'),
                     'attempt' => 1,
-                    'method' => $validated['bank_method'] ?? Payment::METHOD_TRANSFER_BANK,
+                    'method' => Payment::METHOD_TRANSFER_BANK,
                     'amount' => $dpAmount,
-                    'status' => !empty($validated['dp_proof']) ? Payment::STATUS_LUNAS : Payment::STATUS_MENUNGGU,
-                    'expires_at' => now()->addHours(12),
-                    'paid_at' => !empty($validated['dp_proof']) ? now() : null,
-                    'proof' => $validated['dp_proof'] ?? null,
-                    'notes' => 'Pembayaran Uang Muka DP 50% untuk pesanan ' . $orderCode,
+                    'status' => Payment::STATUS_MENUNGGU,
+                    'expires_at' => now()->addHours(24),
+                    'paid_at' => null,
+                    'proof' => $dpProofUrl,
+                    'notes' => 'Pembayaran Uang Muka DP 50% via ' . ($validated['bank_method'] ?? 'Transfer Bank') . ' untuk pesanan ' . $orderCode,
                 ]);
-
-                if (!empty($validated['dp_proof'])) {
-                    $order->update([
-                        'production_status' => Order::STAGE_PERSIAPAN_BAHAN,
-                    ]);
-                }
 
                 return $order;
             });
@@ -176,7 +199,7 @@ class OrderApiController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Purchase Order (PO) berhasil dibuat.',
+                'message' => 'Purchase Order (PO) berhasil dibuat. Bukti transfer DP 50% tersimpan di Supabase dan menunggu verifikasi finance.',
                 'data' => $this->formatOrderResponse($order),
             ], 201);
         } catch (Throwable $e) {
@@ -200,42 +223,82 @@ class OrderApiController extends Controller
     public function uploadDpProof(Request $request, string $id): JsonResponse
     {
         $validated = $request->validate([
-            'proof' => ['required', 'string'],
+            'proof' => ['nullable', 'string'],
+            'proof_file' => ['nullable', 'file', 'image', 'max:5120'],
             'notes' => ['nullable', 'string'],
         ]);
 
         try {
-            $order = Order::where('id', is_numeric($id) ? (int)$id : 0)
-                ->orWhere('order_code', $id)
-                ->first();
+            $user = $request->user();
+            $customer = Customer::where('email', $user?->email)->first();
 
-            if (! $order) {
+            if (! $customer) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Pesanan tidak ditemukan.',
                 ], 404);
             }
 
-            DB::transaction(function () use ($order, $validated) {
-                $dpPayment = $order->payments()->first();
+            $order = Order::where('customer_id', $customer->id)
+                ->where(function ($q) use ($id) {
+                    $q->where('id', is_numeric($id) ? (int)$id : 0)
+                      ->orWhere('order_code', $id);
+                })
+                ->first();
+
+            if (! $order) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pesanan tidak ditemukan atau Anda tidak memiliki akses ke pesanan ini.',
+                ], 404);
+            }
+
+            $proofUrl = $this->resolveAndStoreProof(
+                $validated['proof'] ?? null,
+                $request->file('proof_file'),
+                $order->order_code,
+                (float) $order->dp_amount,
+                'Bank BCA Corporate'
+            );
+
+            DB::transaction(function () use ($order, $proofUrl, $validated) {
+                // Cari record pembayaran DP (pembayaran yang bukan pelunasan)
+                $dpPayment = $order->payments()
+                    ->where('notes', 'not like', '%Pelunasan%')
+                    ->latest('id')
+                    ->first() ?: $order->payments()->first();
+
                 if ($dpPayment) {
                     $dpPayment->update([
-                        'proof' => $validated['proof'],
-                        'status' => Payment::STATUS_LUNAS,
-                        'paid_at' => now(),
-                        'notes' => $validated['notes'] ?? $dpPayment->notes,
+                        'proof' => $proofUrl,
+                        'status' => Payment::STATUS_MENUNGGU,
+                        'failure_reason' => null,
+                        'attempt' => $dpPayment->attempt + 1,
+                        'notes' => $validated['notes'] ?? ('Unggah ulang bukti transfer DP 50% untuk pesanan ' . $order->order_code),
+                    ]);
+                } else {
+                    $order->payments()->create([
+                        'payment_code' => Reference::make(Reference::PAYMENT, Payment::class, 'payment_code'),
+                        'attempt' => 1,
+                        'method' => Payment::METHOD_TRANSFER_BANK,
+                        'amount' => $order->dp_amount,
+                        'status' => Payment::STATUS_MENUNGGU,
+                        'expires_at' => now()->addHours(24),
+                        'proof' => $proofUrl,
+                        'notes' => 'Pembayaran Uang Muka DP 50% untuk pesanan ' . $order->order_code,
                     ]);
                 }
 
                 $order->update([
-                    'dp_proof' => $validated['proof'],
-                    'production_status' => Order::STAGE_PERSIAPAN_BAHAN,
+                    'dp_proof' => $proofUrl,
+                    'status' => Order::STATUS_MENUNGGU_PEMBAYARAN,
+                    'production_status' => Order::STAGE_VERIFIKASI_DP,
                 ]);
             });
 
             return response()->json([
                 'success' => true,
-                'message' => 'Bukti pembayaran DP 50% berhasil diunggah. Tahap produksi diperbarui ke: Persiapan Bahan Baku.',
+                'message' => 'Bukti pembayaran DP 50% berhasil diunggah ke Supabase. Menunggu verifikasi admin finance.',
                 'data' => $this->formatOrderResponse($order->fresh(['items.machine', 'payments', 'customer'])),
             ]);
         } catch (Throwable $e) {
@@ -256,46 +319,81 @@ class OrderApiController extends Controller
     public function uploadPelunasanProof(Request $request, string $id): JsonResponse
     {
         $validated = $request->validate([
-            'proof' => ['required', 'string'],
+            'proof' => ['nullable', 'string'],
+            'proof_file' => ['nullable', 'file', 'image', 'max:5120'],
             'notes' => ['nullable', 'string'],
         ]);
 
         try {
-            $order = Order::where('id', is_numeric($id) ? (int)$id : 0)
-                ->orWhere('order_code', $id)
-                ->first();
+            $user = $request->user();
+            $customer = Customer::where('email', $user?->email)->first();
 
-            if (! $order) {
+            if (! $customer) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Pesanan tidak ditemukan.',
                 ], 404);
             }
 
-            DB::transaction(function () use ($order, $validated) {
-                $order->payments()->create([
-                    'payment_code' => Reference::make(Reference::PAYMENT, Payment::class, 'payment_code'),
-                    'attempt' => $order->payments()->count() + 1,
-                    'method' => Payment::METHOD_TRANSFER_BANK,
-                    'amount' => $order->pelunasan_amount,
-                    'status' => Payment::STATUS_LUNAS,
-                    'expires_at' => now()->addHours(12),
-                    'paid_at' => now(),
-                    'proof' => $validated['proof'],
-                    'notes' => 'Pembayaran Pelunasan Sisa 50% untuk pesanan ' . $order->order_code,
-                ]);
+            $order = Order::where('customer_id', $customer->id)
+                ->where(function ($q) use ($id) {
+                    $q->where('id', is_numeric($id) ? (int)$id : 0)
+                      ->orWhere('order_code', $id);
+                })
+                ->first();
+
+            if (! $order) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pesanan tidak ditemukan atau Anda tidak memiliki akses ke pesanan ini.',
+                ], 404);
+            }
+
+            $proofUrl = $this->resolveAndStoreProof(
+                $validated['proof'] ?? null,
+                $request->file('proof_file'),
+                $order->order_code . '-PELUNASAN',
+                (float) $order->pelunasan_amount,
+                'Bank BCA Corporate'
+            );
+
+            DB::transaction(function () use ($order, $proofUrl, $validated) {
+                // Cari apakah sudah ada pembayaran pelunasan sebelumnya (misal yang ditolak)
+                $pelunasanPayment = $order->payments()
+                    ->where('notes', 'like', '%Pelunasan%')
+                    ->latest('id')
+                    ->first();
+
+                if ($pelunasanPayment && $pelunasanPayment->status === Payment::STATUS_GAGAL) {
+                    $pelunasanPayment->update([
+                        'proof' => $proofUrl,
+                        'status' => Payment::STATUS_MENUNGGU,
+                        'failure_reason' => null,
+                        'attempt' => $pelunasanPayment->attempt + 1,
+                        'notes' => $validated['notes'] ?? ('Unggah ulang bukti pelunasan sisa 50% untuk pesanan ' . $order->order_code),
+                    ]);
+                } else {
+                    $order->payments()->create([
+                        'payment_code' => Reference::make(Reference::PAYMENT, Payment::class, 'payment_code'),
+                        'attempt' => $order->payments()->count() + 1,
+                        'method' => Payment::METHOD_TRANSFER_BANK,
+                        'amount' => $order->pelunasan_amount,
+                        'status' => Payment::STATUS_MENUNGGU,
+                        'expires_at' => now()->addHours(24),
+                        'proof' => $proofUrl,
+                        'notes' => 'Pembayaran Pelunasan Sisa 50% untuk pesanan ' . $order->order_code,
+                    ]);
+                }
 
                 $order->update([
-                    'status' => Order::STATUS_LUNAS,
-                    'pelunasan_proof' => $validated['proof'],
-                    'production_status' => Order::STAGE_PENGIRIMAN_INSTALASI,
-                    'paid_at' => now(),
+                    'pelunasan_proof' => $proofUrl,
+                    'production_status' => Order::STAGE_MENUNGGU_PELUNASAN,
                 ]);
             });
 
             return response()->json([
                 'success' => true,
-                'message' => 'Bukti pelunasan 50% berhasil diunggah. Tahap produksi diperbarui ke: Pengiriman & Instalasi.',
+                'message' => 'Bukti pelunasan 50% berhasil diunggah ke Supabase. Menunggu verifikasi admin finance.',
                 'data' => $this->formatOrderResponse($order->fresh(['items.machine', 'payments', 'customer'])),
             ]);
         } catch (Throwable $e) {
@@ -313,18 +411,31 @@ class OrderApiController extends Controller
      * GET /api/orders/{id}/invoice
      * Generate data Invoice PDF resmi
      */
-    public function invoice(string $id): JsonResponse
+    public function invoice(Request $request, string $id): JsonResponse
     {
         try {
+            $user = $request->user();
+            $customer = Customer::where('email', $user?->email)->first();
+
+            if (! $customer) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pesanan untuk invoice tidak ditemukan.',
+                ], 404);
+            }
+
             $order = Order::with(['items.machine', 'payments', 'customer'])
-                ->where('id', is_numeric($id) ? (int)$id : 0)
-                ->orWhere('order_code', $id)
+                ->where('customer_id', $customer->id)
+                ->where(function ($q) use ($id) {
+                    $q->where('id', is_numeric($id) ? (int)$id : 0)
+                      ->orWhere('order_code', $id);
+                })
                 ->first();
 
             if (! $order) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Pesanan untuk invoice tidak ditemukan.',
+                    'message' => 'Pesanan untuk invoice tidak ditemukan atau Anda tidak memiliki akses.',
                 ], 404);
             }
 
@@ -386,6 +497,21 @@ class OrderApiController extends Controller
             Order::STAGE_AFTER_SALES => 6,
         ];
 
+        $latestPayment = $order->latestPayment ?: $order->payments->sortBy('id')->last();
+        $isDpPhase = $order->production_status === Order::STAGE_VERIFIKASI_DP;
+        $isPelunasanPhase = $order->production_status === Order::STAGE_MENUNGGU_PELUNASAN;
+
+        // DP rejected jika di tahap verifikasi DP dan pembayaran terakhir gagal
+        $isDpRejected = $isDpPhase && $latestPayment && $latestPayment->status === Payment::STATUS_GAGAL;
+
+        // Pelunasan rejected jika di tahap menunggu pelunasan dan pembayaran terakhir gagal
+        $isPelunasanRejected = $isPelunasanPhase && $latestPayment && $latestPayment->status === Payment::STATUS_GAGAL;
+
+        $rejectionReason = null;
+        if ($isDpRejected || $isPelunasanRejected) {
+            $rejectionReason = $latestPayment?->failure_reason ?: 'Bukti transfer ditolak sebagai tidak valid/palsu oleh finance admin.';
+        }
+
         return [
             'id' => (string) $order->id,
             'po_number' => $order->order_code,
@@ -406,6 +532,9 @@ class OrderApiController extends Controller
             'production_stage_title' => Order::productionStageLabels()[$order->production_status] ?? 'Verifikasi DP',
             'dp_proof_path' => $order->dp_proof,
             'pelunasan_proof_path' => $order->pelunasan_proof,
+            'is_dp_rejected' => $isDpRejected,
+            'is_pelunasan_rejected' => $isPelunasanRejected,
+            'rejection_reason' => $rejectionReason,
             'delivery_address' => $order->delivery_address ?? 'Jl. Sudirman No. 45, Jakarta Selatan',
             'custom_notes' => $order->custom_notes ?? '',
             'payments' => $order->payments->map(fn($p) => [
@@ -419,4 +548,107 @@ class OrderApiController extends Controller
             ]),
         ];
     }
+
+    /**
+     * Helper untuk upload bukti transfer ke Supabase Storage dengan fallback lokal otomatis.
+     * Menerima UploadedFile atau Base64 data URI (gambar JPG/PNG/WebP atau dokumen PDF).
+     * TIDAK PERNAH membuat SVG dummy / palsu. Hanya menyimpan file asli yang dikirim oleh pelanggan.
+     */
+    private function resolveAndStoreProof(
+        ?string $proofString,
+        mixed $file,
+        string $orderCode,
+        float $amount,
+        string $bankMethod
+    ): ?string {
+        $storage = app(\App\Services\SupabaseStorageService::class);
+        $safeOrderCode = Str::slug($orderCode, '_');
+
+        // Pastikan folder penyimpanan lokal selalu tersedia
+        $localDir = public_path('uploads/payments');
+        if (! file_exists($localDir)) {
+            @mkdir($localDir, 0755, true);
+        }
+
+        // 1. Jika ada file upload multipart langsung dari form request
+        if ($file instanceof \Illuminate\Http\UploadedFile && $file->isValid()) {
+            $ext = strtolower($file->getClientOriginalExtension() ?: 'jpg');
+            $filename = "proof_{$safeOrderCode}_" . time() . '.' . $ext;
+
+            try {
+                $file->move($localDir, $filename);
+                $localUrl = asset('uploads/payments/' . $filename);
+            } catch (Throwable $moveEx) {
+                $localUrl = null;
+            }
+
+            // Sinkronkan ke Supabase Storage
+            try {
+                $supabaseUrl = $storage->upload($file, 'payments');
+                if ($supabaseUrl) {
+                    return $supabaseUrl;
+                }
+            } catch (Throwable $e) {
+                Log::warning('Supabase upload failed: ' . $e->getMessage());
+            }
+
+            if ($localUrl) {
+                return $localUrl;
+            }
+        }
+
+        if (empty($proofString)) {
+            return null;
+        }
+
+        // 2. Jika sudah berupa URL publik Supabase atau web
+        if (Str::startsWith($proofString, ['http://', 'https://'])) {
+            return $proofString;
+        }
+
+        // 3. Jika berupa Base64 dari aplikasi mobile (data:image/... atau data:application/pdf)
+        if (Str::startsWith($proofString, ['data:image/', 'data:application/pdf'])) {
+            try {
+                [$meta, $data] = explode(',', $proofString, 2);
+                $decoded = base64_decode($data);
+
+                if ($decoded !== false) {
+                    if (Str::startsWith($proofString, 'data:application/pdf')) {
+                        $ext = 'pdf';
+                        $mimeType = 'application/pdf';
+                    } else {
+                        preg_match('/data:image\/([a-zA-Z0-9\+\-]+);base64/', $meta, $matches);
+                        $subType = strtolower($matches[1] ?? 'png');
+                        $ext = ($subType === 'jpeg') ? 'jpg' : $subType;
+                        $mimeType = 'image/' . ($matches[1] ?? 'png');
+                    }
+
+                    $filename = "proof_{$safeOrderCode}_" . time() . '.' . $ext;
+                    file_put_contents($localDir . '/' . $filename, $decoded);
+                    $localUrl = asset('uploads/payments/' . $filename);
+
+                    // Sinkronisasi file asli ke Supabase Storage
+                    $supabaseUrl = $storage->uploadRaw(
+                        $decoded,
+                        $filename,
+                        $mimeType,
+                        'payments'
+                    );
+
+                    return $supabaseUrl ?: $localUrl;
+                }
+            } catch (Throwable $e) {
+                Log::warning('Base64 decode failed: ' . $e->getMessage());
+            }
+        }
+
+        // 4. Jika nama file sudah ada di folder uploads lokal
+        $cleanBase = basename($proofString);
+        if (file_exists($localDir . '/' . $cleanBase)) {
+            return asset('uploads/payments/' . $cleanBase);
+        }
+
+        return null;
+    }
 }
+

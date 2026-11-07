@@ -600,6 +600,14 @@ class AuthController extends Controller
                 ], 401);
             }
 
+            // Isolasi keamanan: Akun role Admin dilarang login lewat Mobile API
+            if ($user->isAdmin() || $user->role === User::ROLE_ADMIN) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses ditolak. Akun administrator hanya dapat diakses melalui Panel Admin Web.',
+                ], 403);
+            }
+
             // Verifikasi status aktivasi akun: wajib aktif sebelum bisa login
             if (! $user->is_active || $user->email_verified_at === null) {
                 return response()->json([
@@ -664,6 +672,15 @@ class AuthController extends Controller
 
         try {
             $email = strtolower(trim($validated['email']));
+
+            // Isolasi keamanan: Tolak jika akun Google ini terdaftar sebagai Admin di sistem
+            $existingUser = User::where('email', $email)->first();
+            if ($existingUser && ($existingUser->isAdmin() || $existingUser->role === User::ROLE_ADMIN)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses ditolak. Akun administrator tidak dapat login melalui aplikasi mobile.',
+                ], 403);
+            }
 
             $result = DB::transaction(function () use ($validated, $email) {
                 $user = User::where('email', $email)->first();
