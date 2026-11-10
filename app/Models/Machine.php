@@ -18,6 +18,7 @@ class Machine extends Model
         'name',
         'slug',
         'model_code',
+        'price',
         'function',
         'description',
         'specifications',
@@ -32,6 +33,7 @@ class Machine extends Model
     ];
 
     protected $casts = [
+        'price' => 'decimal:2',
         'is_featured' => 'boolean',
         'is_active' => 'boolean',
         'sort_order' => 'integer',
@@ -65,12 +67,14 @@ class Machine extends Model
         static::saved(function (Machine $machine): void {
             \Illuminate\Support\Facades\Cache::forget("machine_model_slug_{$machine->slug}");
             \Illuminate\Support\Facades\Cache::forget("machine_related_{$machine->id}");
+            \Illuminate\Support\Facades\Cache::forget("api_machines_all");
             \App\Support\Site::flushPublicCache();
         });
 
         static::deleted(function (Machine $machine): void {
             \Illuminate\Support\Facades\Cache::forget("machine_model_slug_{$machine->slug}");
             \Illuminate\Support\Facades\Cache::forget("machine_related_{$machine->id}");
+            \Illuminate\Support\Facades\Cache::forget("api_machines_all");
             \App\Support\Site::flushPublicCache();
         });
     }

@@ -234,9 +234,16 @@ class MachineController extends Controller
             $weight = $weightAmount.' kg';
         }
 
+        $rawPrice = $request->input('price');
+        $cleanPrice = null;
+        if ($rawPrice !== null && $rawPrice !== '') {
+            $cleanPrice = (float) preg_replace('/[^\d.]/', '', str_replace(',', '.', (string) $rawPrice));
+        }
+
         $request->merge([
             'name' => $this->trimmed($request->input('name')),
             'model_code' => $this->trimmed($request->input('model_code')),
+            'price' => $cleanPrice,
             'function' => $this->trimmed($request->input('function')),
             'capacity_amount' => $capacityAmount,
             'capacity_time' => $capacityTime,
@@ -266,6 +273,7 @@ class MachineController extends Controller
                 ['nullable', 'string', 'max:'.self::LENGTHS['model_code']],
                 $this->uniqueRules('model_code', $categoryId, $machine, $request->input('model_code')),
             ),
+            'price' => ['nullable', 'numeric', 'min:0', 'max:999999999999'],
             'function' => ['nullable', 'string', 'max:'.self::LENGTHS['function']],
             'capacity_amount' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
             'capacity_time' => ['nullable', 'integer', 'min:1', 'max:999'],

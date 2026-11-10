@@ -18,51 +18,56 @@ class MachineApiController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-            $query = Machine::query()
-                ->with(['category', 'images'])
-                ->where('is_active', true);
+            $version = \Illuminate\Support\Facades\Cache::get('api_machines_version', 1);
+            $cacheKey = "api_machines_v{$version}_" . md5(json_encode($request->all()));
 
-            if ($request->filled('category_id')) {
-                $query->where('category_id', $request->input('category_id'));
-            }
+            $machines = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($request) {
+                $query = Machine::query()
+                    ->with(['category', 'images'])
+                    ->where('is_active', true);
 
-            if ($request->filled('search')) {
-                $search = $request->input('search');
-                $query->where(function ($q) use ($search) {
-                    $q->where('name', 'ilike', "%{$search}%")
-                      ->orWhere('model_code', 'ilike', "%{$search}%")
-                      ->orWhere('function', 'ilike', "%{$search}%")
-                      ->orWhere('description', 'ilike', "%{$search}%");
-                });
-            }
+                if ($request->filled('category_id')) {
+                    $query->where('category_id', $request->input('category_id'));
+                }
 
-            $machines = $query->latest('id')->get()->map(function ($m) {
-                $categoryName = $m->category?->name ?? 'Mesin Pengolahan Kopi';
-                $isKakao = str_contains(strtolower($m->name . ' ' . $categoryName), 'kakao');
-                $isHulu = str_contains(strtolower($m->name . ' ' . $m->function), 'pulper') || str_contains(strtolower($m->name . ' ' . $m->function), 'huller') || str_contains(strtolower($m->name . ' ' . $m->function), 'fermentasi') || str_contains(strtolower($m->name . ' ' . $m->function), 'pengering');
+                if ($request->filled('search')) {
+                    $search = $request->input('search');
+                    $query->where(function ($q) use ($search) {
+                        $q->where('name', 'ilike', "%{$search}%")
+                          ->orWhere('model_code', 'ilike', "%{$search}%")
+                          ->orWhere('function', 'ilike', "%{$search}%")
+                          ->orWhere('description', 'ilike', "%{$search}%");
+                    });
+                }
 
-                return [
-                    'id' => $m->id,
-                    'name' => $m->name,
-                    'slug' => $m->slug,
-                    'model_code' => $m->model_code,
-                    'category' => $categoryName,
-                    'category_id' => $m->category_id,
-                    'commodity' => $isKakao ? 'Kakao' : 'Kopi',
-                    'process_stage' => $isHulu ? 'Hulu' : 'Hilir',
-                    'price' => (float) ($m->price ?? ($m->id == 1 ? 145000000 : ($m->id == 2 ? 85000000 : ($m->id == 3 ? 120000000 : 75000000)))),
-                    'function' => $m->function,
-                    'description' => $m->description,
-                    'capacity' => $m->capacity,
-                    'power' => $m->power,
-                    'dimension' => $m->dimension,
-                    'weight' => $m->weight,
-                    'specifications' => $m->specifications,
-                    'image_url' => $this->resolveMachineImage($m),
-                    'images' => $m->images->map(fn($img) => $img->imageUrl())->toArray(),
-                    'rating' => 4.9,
-                    'is_ready_stock' => true,
-                ];
+                return $query->latest('id')->get()->map(function ($m) {
+                    $categoryName = $m->category?->name ?? 'Mesin Pengolahan Kopi';
+                    $isKakao = str_contains(strtolower($m->name . ' ' . $categoryName), 'kakao');
+                    $isHulu = str_contains(strtolower($m->name . ' ' . $m->function), 'pulper') || str_contains(strtolower($m->name . ' ' . $m->function), 'huller') || str_contains(strtolower($m->name . ' ' . $m->function), 'fermentasi') || str_contains(strtolower($m->name . ' ' . $m->function), 'pengering');
+
+                    return [
+                        'id' => $m->id,
+                        'name' => $m->name,
+                        'slug' => $m->slug,
+                        'model_code' => $m->model_code,
+                        'category' => $categoryName,
+                        'category_id' => $m->category_id,
+                        'commodity' => $isKakao ? 'Kakao' : 'Kopi',
+                        'process_stage' => $isHulu ? 'Hulu' : 'Hilir',
+                        'price' => (float) ($m->price > 0 ? $m->price : ($m->id == 1 ? 18500000 : 25000000)),
+                        'function' => $m->function,
+                        'description' => $m->description,
+                        'capacity' => $m->capacity,
+                        'power' => $m->power,
+                        'dimension' => $m->dimension,
+                        'weight' => $m->weight,
+                        'specifications' => $m->specifications,
+                        'image_url' => $this->resolveMachineImage($m),
+                        'images' => $m->images->map(fn($img) => $img->imageUrl())->toArray(),
+                        'rating' => 4.9,
+                        'is_ready_stock' => true,
+                    ];
+                })->toArray();
             });
 
             return response()->json([

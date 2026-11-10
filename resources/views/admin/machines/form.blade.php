@@ -43,6 +43,13 @@
                                    hint="Maksimal 50 karakter. Tidak boleh sama dengan model mesin lain pada jenis mesin yang sama." />
                 </div>
 
+                <div class="grid gap-5 sm:grid-cols-2">
+                    <x-admin.input name="price" label="Harga PO Mesin (Rp)" :value="$machine->price ? number_format($machine->price, 0, '', '') : ''"
+                                   type="number" min="0" step="1000"
+                                   placeholder="Contoh: 4000000"
+                                   hint="Harga acuan Purchase Order (PO) mesin untuk website & mobile app. Sistem DP 50% akan otomatis dikalkulasi." />
+                </div>
+
                 <x-admin.textarea name="function" label="Fungsi mesin" :value="$machine->function" :rows="3"
                                   maxlength="375"
                                   hint="Maksimal 375 karakter. Jelaskan kegunaan mesin ini dalam proses pengolahan." />

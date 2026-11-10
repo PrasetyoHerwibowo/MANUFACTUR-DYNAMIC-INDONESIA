@@ -67,12 +67,22 @@ class Order extends Model
 
     protected static function booted(): void
     {
-        static::saved(function () {
+        static::saved(function (Order $order) {
             \Illuminate\Support\Facades\Cache::forget('admin_orders_stats');
+            if ($order->customer_id) {
+                \Illuminate\Support\Facades\Cache::forget("api_orders_customer_{$order->customer_id}");
+            }
+            \Illuminate\Support\Facades\Cache::forget("api_order_detail_{$order->id}");
+            \Illuminate\Support\Facades\Cache::forget("api_order_detail_{$order->order_code}");
         });
 
-        static::deleted(function () {
+        static::deleted(function (Order $order) {
             \Illuminate\Support\Facades\Cache::forget('admin_orders_stats');
+            if ($order->customer_id) {
+                \Illuminate\Support\Facades\Cache::forget("api_orders_customer_{$order->customer_id}");
+            }
+            \Illuminate\Support\Facades\Cache::forget("api_order_detail_{$order->id}");
+            \Illuminate\Support\Facades\Cache::forget("api_order_detail_{$order->order_code}");
         });
     }
 

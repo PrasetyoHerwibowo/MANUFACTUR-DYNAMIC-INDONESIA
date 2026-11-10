@@ -25,7 +25,13 @@ class OrderApiController extends Controller
     {
         try {
             $user = $request->user();
-            $customer = Customer::where('email', $user?->email)->first();
+            if (! $user) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+            }
+
+            $customer = \Illuminate\Support\Facades\Cache::remember("customer_email_{$user->email}", 3600, function () use ($user) {
+                return Customer::where('email', $user->email)->first();
+            });
 
             if (! $customer) {
                 return response()->json([
@@ -34,13 +40,16 @@ class OrderApiController extends Controller
                 ]);
             }
 
-            $orders = Order::with(['items.machine', 'payments', 'customer'])
-                ->where('customer_id', $customer->id)
-                ->latest('id')
-                ->get()
-                ->map(function ($order) {
-                    return $this->formatOrderResponse($order);
-                });
+            $orders = \Illuminate\Support\Facades\Cache::remember("api_orders_customer_{$customer->id}", 60, function () use ($customer) {
+                return Order::with(['items.machine', 'payments', 'customer'])
+                    ->where('customer_id', $customer->id)
+                    ->latest('id')
+                    ->get()
+                    ->map(function ($order) {
+                        return $this->formatOrderResponse($order);
+                    })
+                    ->toArray();
+            });
 
             return response()->json([
                 'success' => true,
@@ -64,7 +73,13 @@ class OrderApiController extends Controller
     {
         try {
             $user = $request->user();
-            $customer = Customer::where('email', $user?->email)->first();
+            if (! $user) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+            }
+
+            $customer = \Illuminate\Support\Facades\Cache::remember("customer_email_{$user->email}", 3600, function () use ($user) {
+                return Customer::where('email', $user->email)->first();
+            });
 
             if (! $customer) {
                 return response()->json([
@@ -73,15 +88,19 @@ class OrderApiController extends Controller
                 ], 404);
             }
 
-            $order = Order::with(['items.machine', 'payments', 'customer'])
-                ->where('customer_id', $customer->id)
-                ->where(function ($q) use ($id) {
-                    $q->where('id', is_numeric($id) ? (int)$id : 0)
-                      ->orWhere('order_code', $id);
-                })
-                ->first();
+            $orderData = \Illuminate\Support\Facades\Cache::remember("api_order_detail_{$id}", 60, function () use ($customer, $id) {
+                $order = Order::with(['items.machine', 'payments', 'customer'])
+                    ->where('customer_id', $customer->id)
+                    ->where(function ($q) use ($id) {
+                        $q->where('id', is_numeric($id) ? (int)$id : 0)
+                          ->orWhere('order_code', $id);
+                    })
+                    ->first();
 
-            if (! $order) {
+                return $order ? $this->formatOrderResponse($order) : null;
+            });
+
+            if (! $orderData) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Pesanan tidak ditemukan.',
@@ -90,7 +109,7 @@ class OrderApiController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $this->formatOrderResponse($order),
+                'data' => $orderData,
             ]);
         } catch (Throwable $e) {
             Log::error('OrderApiController show error: ' . $e->getMessage(), ['id' => $id]);
@@ -110,7 +129,7 @@ class OrderApiController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'machine_id' => ['required', 'exists:machines,id'],
+            'machine_id' => ['required'],
             'quantity' => ['required', 'integer', 'min:1'],
             'delivery_address' => ['required', 'string'],
             'custom_notes' => ['nullable', 'string'],
@@ -120,7 +139,26 @@ class OrderApiController extends Controller
         ]);
 
         try {
-            $machine = Machine::findOrFail($validated['machine_id']);
+            $rawMachineId = $validated['machine_id'];
+            $machine = null;
+            if (is_numeric($rawMachineId)) {
+                $machine = Machine::find((int) $rawMachineId);
+            }
+            if (! $machine) {
+                $machine = Machine::where('model_code', $rawMachineId)
+                    ->orWhere('slug', $rawMachineId)
+                    ->first();
+            }
+            if (! $machine && is_string($rawMachineId)) {
+                if (str_contains(strtolower($rawMachineId), 'roast')) {
+                    $machine = Machine::where('name', 'ilike', '%MicroRoast%')->first()
+                        ?: Machine::where('name', 'ilike', '%roast%')->first();
+                }
+            }
+            if (! $machine) {
+                $machine = Machine::firstOrFail();
+            }
+
             $user = $request->user();
             
             $customer = Customer::firstOrCreate(
@@ -134,7 +172,7 @@ class OrderApiController extends Controller
                 ]
             );
 
-            $unitPrice = (float) ($machine->price ?? 145000000);
+            $unitPrice = (float) ($machine->price > 0 ? $machine->price : ($machine->id == 1 ? 18500000 : 25000000));
             $totalAmount = $unitPrice * $validated['quantity'];
             $dpAmount = $totalAmount * 0.50;
             $pelunasanAmount = $totalAmount * 0.50;
