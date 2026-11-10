@@ -80,13 +80,12 @@
         <div class="border-b border-gray-200 p-5 dark:border-gray-700">
             <div class="flex w-full items-center justify-center py-2">
                 @if ($company->logoUrl())
-                    <div class="flex h-16 w-32 items-center justify-center overflow-hidden rounded-xl bg-white p-1 shadow-lg">
+                    <div class="flex h-16 w-36 items-center justify-center overflow-hidden rounded-xl bg-white p-1 shadow-lg">
                         <img src="{{ $company->logoUrl() }}" alt="{{ $company->name }}" class="h-full w-full object-contain">
                     </div>
                 @else
-                    <div class="flex h-16 w-32 items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-coffee-500 to-coffee-700 shadow-lg">
-                        <i aria-hidden="true" class="fas fa-industry text-xl text-white"></i>
-                        <span class="text-xs font-extrabold uppercase tracking-wide text-white">Panel Admin</span>
+                    <div class="flex h-16 w-36 items-center justify-center rounded-xl bg-gradient-to-br from-coffee-500 to-coffee-700 p-2.5 shadow-lg">
+                        <img src="{{ asset('images/logo_eiko.png') }}" alt="{{ $company->name }}" class="h-10 w-auto max-w-full object-contain brightness-0 invert" style="filter: brightness(0) invert(1);">
                     </div>
                 @endif
             </div>

@@ -21,9 +21,22 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
+Route::get('/storage/image/{filename}', function (string $filename) {
+    $path = base_path('storage/image/'.$filename);
+    if (! file_exists($path)) {
+        abort(404);
+    }
+    return response()->file($path);
+})->where('filename', '.*');
+
 Route::get('/tentang-kami', [PageController::class, 'about'])->name('about');
 
 Route::get('/produk', [ProductController::class, 'index'])->name('products.index');
+Route::get('/produk/cocoa-series', [ProductController::class, 'cocoaSeries'])->name('products.cocoa');
+Route::get('/produk/coffee-series', [ProductController::class, 'coffeeSeries'])->name('products.coffee');
+Route::redirect('/produk/kakao', '/produk/cocoa-series', 301);
+Route::redirect('/produk/kopi', '/produk/coffee-series', 301);
+Route::redirect('/produk/coffe-series', '/produk/coffee-series', 301);
 Route::get('/produk/{machine}', [ProductController::class, 'show'])->name('products.show');
 
 Route::get('/kontak', [PageController::class, 'contact'])->name('contact');
@@ -62,6 +75,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('pesanan/{order}', [AdminOrderController::class, 'destroy'])->name('orders.destroy');
         Route::post('pesanan/{order}/pembayaran-baru', [AdminOrderController::class, 'renewPayment'])
             ->name('orders.payments.renew');
+        Route::put('pesanan/{order}/verifikasi-bukti', [AdminOrderController::class, 'verifyProof'])
+            ->name('orders.proof.verify');
+        Route::put('pesanan/{order}/tahap-produksi', [AdminOrderController::class, 'updateProductionStage'])
+            ->name('orders.stage.update');
 
         // Pembayaran: verifikasi lunas atau tandai gagal.
         Route::put('pembayaran/{payment}/lunas', [AdminOrderController::class, 'verifyPayment'])

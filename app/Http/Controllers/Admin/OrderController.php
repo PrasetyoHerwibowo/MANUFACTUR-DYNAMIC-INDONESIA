@@ -73,30 +73,30 @@ class OrderController extends Controller
                 ->paginate(15)
                 ->withQueryString();
 
-            $stats = Cache::remember('admin_orders_stats', 300, function () {
-                $orderCounts = Order::query()
-                    ->selectRaw("COUNT(*) as total,
-                        COUNT(CASE WHEN status = ? THEN 1 END) as menunggu,
-                        COUNT(CASE WHEN status = ? THEN 1 END) as lunas,
-                        COUNT(CASE WHEN status = ? THEN 1 END) as gagal",
-                        [Order::STATUS_MENUNGGU_PEMBAYARAN, Order::STATUS_LUNAS, Order::STATUS_GAGAL])
-                    ->first();
+            // Hitung statistik pesanan secara real-time langsung dari database
+            Cache::forget('admin_orders_stats');
+            $orderCounts = Order::query()
+                ->selectRaw("COUNT(*) as total,
+                    COUNT(CASE WHEN status = ? THEN 1 END) as menunggu,
+                    COUNT(CASE WHEN status = ? THEN 1 END) as lunas,
+                    COUNT(CASE WHEN status = ? THEN 1 END) as gagal",
+                    [Order::STATUS_MENUNGGU_PEMBAYARAN, Order::STATUS_LUNAS, Order::STATUS_GAGAL])
+                ->first();
 
-                $paymentSums = Payment::query()
-                    ->selectRaw("SUM(CASE WHEN status = ? THEN amount ELSE 0 END) as nilai_menunggu,
-                        SUM(CASE WHEN status = ? THEN amount ELSE 0 END) as nilai_lunas",
-                        [Payment::STATUS_MENUNGGU, Payment::STATUS_LUNAS])
-                    ->first();
+            $paymentSums = Payment::query()
+                ->selectRaw("SUM(CASE WHEN status = ? THEN amount ELSE 0 END) as nilai_menunggu,
+                    SUM(CASE WHEN status = ? THEN amount ELSE 0 END) as nilai_lunas",
+                    [Payment::STATUS_MENUNGGU, Payment::STATUS_LUNAS])
+                ->first();
 
-                return [
-                    'total' => (int) ($orderCounts->total ?? 0),
-                    'menunggu' => (int) ($orderCounts->menunggu ?? 0),
-                    'lunas' => (int) ($orderCounts->lunas ?? 0),
-                    'gagal' => (int) ($orderCounts->gagal ?? 0),
-                    'nilai_menunggu' => (float) ($paymentSums->nilai_menunggu ?? 0),
-                    'nilai_lunas' => (float) ($paymentSums->nilai_lunas ?? 0),
-                ];
-            });
+            $stats = [
+                'total' => (int) ($orderCounts->total ?? 0),
+                'menunggu' => (int) ($orderCounts->menunggu ?? 0),
+                'lunas' => (int) ($orderCounts->lunas ?? 0),
+                'gagal' => (int) ($orderCounts->gagal ?? 0),
+                'nilai_menunggu' => (float) ($paymentSums->nilai_menunggu ?? 0),
+                'nilai_lunas' => (float) ($paymentSums->nilai_lunas ?? 0),
+            ];
 
             return view('admin.orders.index', [
                 'orders' => $orders,
@@ -163,7 +163,27 @@ class OrderController extends Controller
         try {
             $code = $order->order_code;
 
-            $order->delete();
+            DB::transaction(function () use ($order) {
+                // Hapus bukti transfer file jika ada
+                if ($order->dp_proof) {
+                    ImageUploader::delete($order->dp_proof);
+                }
+                if ($order->pelunasan_proof) {
+                    ImageUploader::delete($order->pelunasan_proof);
+                }
+
+                foreach ($order->payments as $payment) {
+                    if ($payment->proof) {
+                        ImageUploader::delete($payment->proof);
+                    }
+                }
+
+                $order->payments()->delete();
+                $order->items()->delete();
+                $order->delete();
+            });
+
+            Cache::forget('admin_orders_stats');
 
             return redirect()
                 ->route('admin.orders.index')
@@ -275,4 +295,128 @@ class OrderController extends Controller
             return back()->with('error', 'Gagal membuat kode pembayaran baru: '.$e->getMessage());
         }
     }
+
+    /**
+     * Verifikasi bukti transfer DP 50% atau Pelunasan (Real vs Palsu).
+     */
+    public function verifyProof(Request $request, Order $order): RedirectResponse
+    {
+        $validated = $request->validate([
+            'decision' => ['required', 'in:real,fake'],
+            'target' => ['nullable', 'in:dp,pelunasan,any'],
+            'next_stage' => ['nullable', 'string', Rule::in(array_keys(Order::productionStageLabels()))],
+            'reason' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $decision = $validated['decision'];
+        $isPelunasan = ($validated['target'] ?? null) === 'pelunasan' 
+            || $order->production_status === Order::STAGE_MENUNGGU_PELUNASAN;
+        $reason = ($validated['reason'] ?? null) ?: ($decision === 'fake' 
+            ? ($isPelunasan ? 'Bukti transfer pelunasan tidak valid / mutasi rekening tidak ditemukan' : 'Bukti transfer DP tidak valid / mutasi rekening tidak ditemukan')
+            : null);
+
+        try {
+            DB::transaction(function () use ($order, $decision, $validated, $reason, $isPelunasan) {
+                if ($isPelunasan) {
+                    $targetPayment = $order->payments()->where('notes', 'like', '%Pelunasan%')->latest('id')->first()
+                        ?: $order->payments()->where('status', Payment::STATUS_MENUNGGU)->latest('id')->first();
+                } else {
+                    $targetPayment = $order->payments()->where('notes', 'not like', '%Pelunasan%')->latest('id')->first()
+                        ?: $order->payments()->where('status', Payment::STATUS_MENUNGGU)->latest('id')->first();
+                }
+
+                if ($decision === 'real') {
+                    // Jika verifikasi valid (REAL)
+                    if ($targetPayment) {
+                        $noteUpdate = trim(($targetPayment->notes ? $targetPayment->notes . ' ' : '') . '(Diverifikasi REAL oleh finance)');
+                        $targetPayment->markAsPaid(null, $noteUpdate);
+                    }
+
+                    if ($isPelunasan) {
+                        // Jika bukti pelunasan disetujui: Order berstatus LUNAS & Tahap: After-Sales Service (Selesai Garansi Resmi Aktif)
+                        $order->update([
+                            'status' => Order::STATUS_LUNAS,
+                            'production_status' => Order::STAGE_AFTER_SALES,
+                            'paid_at' => now(),
+                            'notes' => trim(($order->notes ? $order->notes . "\n" : '') . '[VERIFIKASI FINANCE ' . date('d/m/Y H:i') . ']: Bukti Pelunasan disetujui REAL. Pesanan LUNAS & garansi resmi 2 tahun aktif.'),
+                        ]);
+                    } else {
+                        // Jika bukti DP 50% disetujui: Majukan ke tahap produksi berikutnya
+                        $targetStage = ($validated['next_stage'] ?? null) ?: Order::STAGE_PERSIAPAN_BAHAN;
+                        $order->update([
+                            'production_status' => $targetStage,
+                            'notes' => trim(($order->notes ? $order->notes . "\n" : '') . '[VERIFIKASI FINANCE ' . date('d/m/Y H:i') . ']: Bukti DP 50% disetujui REAL. Memasuki tahap produksi: ' . (Order::productionStageLabels()[$targetStage] ?? $targetStage) . '.'),
+                        ]);
+                    }
+                } else {
+                    // Jika ditolak (PALSU / FAKE)
+                    if ($targetPayment) {
+                        $targetPayment->markAsFailed($reason);
+                    }
+
+                    if ($isPelunasan) {
+                        $order->update([
+                            'pelunasan_proof' => null,
+                            'production_status' => Order::STAGE_MENUNGGU_PELUNASAN,
+                            'notes' => trim(($order->notes ? $order->notes . "\n" : '') . '[VERIFIKASI FINANCE ' . date('d/m/Y H:i') . ']: DITOLAK (BUKTI PELUNASAN PALSU) - ' . $reason . '. Pelanggan diminta mengunggah ulang bukti pelunasan.'),
+                        ]);
+                    } else {
+                        $order->update([
+                            'dp_proof' => null,
+                            'status' => Order::STATUS_MENUNGGU_PEMBAYARAN,
+                            'production_status' => Order::STAGE_VERIFIKASI_DP,
+                            'notes' => trim(($order->notes ? $order->notes . "\n" : '') . '[VERIFIKASI FINANCE ' . date('d/m/Y H:i') . ']: DITOLAK (BUKTI DP PALSU) - ' . $reason . '. Pelanggan diminta mengunggah ulang bukti transfer DP.'),
+                        ]);
+                    }
+                }
+            });
+
+            if ($decision === 'real') {
+                $order->refresh();
+                return back()->with('success', 'Bukti transfer diverifikasi REAL (VALID)! Status tahap produksi diperbarui menjadi: ' . $order->productionStageLabel() . '.');
+            } else {
+                return back()->with('error', 'Bukti transfer ditolak sebagai PALSU / TIDAK VALID. Catatan penolakan tersimpan dan pelanggan diminta mengunggah bukti valid.');
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('OrderController@verifyProof error: ' . $e->getMessage());
+            return back()->with('error', 'Gagal memproses verifikasi bukti transfer: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Update tahap produksi pesanan secara langsung (7 Tahap Manufaktur).
+     */
+    public function updateProductionStage(Request $request, Order $order): RedirectResponse
+    {
+        $validated = $request->validate([
+            'production_status' => ['required', Rule::in(array_keys(Order::productionStageLabels()))],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        try {
+            $newStage = $validated['production_status'];
+            $updateData = [
+                'production_status' => $newStage,
+            ];
+
+            if ($newStage === Order::STAGE_AFTER_SALES) {
+                $updateData['status'] = Order::STATUS_LUNAS;
+                if (! $order->paid_at) {
+                    $updateData['paid_at'] = now();
+                }
+            }
+
+            if (! empty($validated['notes'])) {
+                $updateData['notes'] = trim(($order->notes ? $order->notes . "\n" : '') . '[UPDATE TAHAP ' . date('d/m/Y H:i') . ']: ' . $validated['notes']);
+            }
+
+            $order->update($updateData);
+
+            return back()->with('success', 'Tahap produksi pesanan ' . $order->order_code . ' berhasil diubah menjadi: ' . $order->productionStageLabel() . '.');
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('OrderController@updateProductionStage error: ' . $e->getMessage());
+            return back()->with('error', 'Gagal memperbarui tahap produksi: ' . $e->getMessage());
+        }
+    }
 }
+

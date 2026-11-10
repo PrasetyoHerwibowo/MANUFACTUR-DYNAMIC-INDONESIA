@@ -22,13 +22,17 @@ class ServiceApiController extends Controller
     {
         try {
             $user = $request->user();
-            $query = ServiceBooking::latest('id');
-
-            if ($user) {
-                $query->where('user_id', $user->id);
+            if (! $user) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [],
+                ]);
             }
 
-            $bookings = $query->get()->map(function ($b) {
+            $bookings = ServiceBooking::where('user_id', $user->id)
+                ->latest('id')
+                ->get()
+                ->map(function ($b) {
                 return [
                     'id' => (string) $b->id,
                     'ticket_number' => $b->booking_code,
@@ -144,13 +148,17 @@ class ServiceApiController extends Controller
     {
         try {
             $user = $request->user();
-            $query = WarrantyClaim::latest('id');
-
-            if ($user) {
-                $query->where('user_id', $user->id);
+            if (! $user) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [],
+                ]);
             }
 
-            $claims = $query->get()->map(function ($c) {
+            $claims = WarrantyClaim::where('user_id', $user->id)
+                ->latest('id')
+                ->get()
+                ->map(function ($c) {
                 return [
                     'id' => (string) $c->id,
                     'claim_number' => $c->claim_code,

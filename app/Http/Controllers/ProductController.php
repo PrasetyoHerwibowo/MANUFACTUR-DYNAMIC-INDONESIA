@@ -11,12 +11,13 @@ use Illuminate\Support\Facades\Cache;
 class ProductController extends Controller
 {
     /**
-     * Daftar seluruh jenis mesin beserta model mesinnya.
+     * Daftar seluruh jenis mesin beserta model mesinnya,
+     * dikelompokkan ke dalam MD-Cocoa Series dan MD-Coffee Series.
      */
-    public function index(Request $request): View
+    public function index(Request $request)
     {
         try {
-            $categories = Cache::remember('site_active_categories', 3600, function () {
+            $categories = Cache::remember('products_categories', 1800, function () {
                 return Category::query()
                     ->active()
                     ->ordered()
@@ -25,56 +26,163 @@ class ProductController extends Controller
             });
 
             $activeCategory = null;
-            $selectedCategorySlug = (string) $request->input('kategori');
 
-            if ($selectedCategorySlug !== '') {
-                $activeCategory = $categories->firstWhere('slug', $selectedCategorySlug);
-            }
+            $machines = Machine::query()
+                ->active()
+                ->with(['category', 'images'])
+                ->when($request->filled('kategori'), function ($query) use ($request, &$activeCategory) {
+                    $activeCategory = Category::query()->where('slug', $request->string('kategori'))->first();
+                    $query->whereHas('category', fn ($sub) => $sub->where('slug', $request->string('kategori')));
+                })
+                ->when($request->filled('q'), function ($query) use ($request) {
+                    $keyword = '%'.$request->string('q').'%';
+                    $query->where(function ($sub) use ($keyword) {
+                        $sub->where('name', 'like', $keyword)
+                            ->orWhere('model_code', 'like', $keyword)
+                            ->orWhere('function', 'like', $keyword);
+                    });
+                })
+                ->ordered()
+                ->paginate(9)
+                ->withQueryString();
 
-            $page = $request->integer('page', 1);
-            $hasFilter = $request->filled('q') || $request->filled('kategori') || $page > 1;
-
-            if (! $hasFilter) {
-                $machines = Cache::remember('products_default_page_1', 3600, function () {
-                    return Machine::query()
-                        ->active()
-                        ->with(['category', 'images'])
-                        ->ordered()
-                        ->paginate(9);
-                });
-            } else {
-                $machines = Machine::query()
-                    ->active()
-                    ->with(['category', 'images'])
-                    ->when($activeCategory, function ($query) use ($activeCategory) {
-                        $query->where('category_id', $activeCategory->id);
-                    }, function ($query) use ($selectedCategorySlug) {
-                        if ($selectedCategorySlug !== '') {
-                            $query->whereHas('category', fn ($sub) => $sub->where('slug', $selectedCategorySlug));
-                        }
-                    })
-                    ->when($request->filled('q'), function ($query) use ($request) {
-                        $keyword = '%'.$request->string('q').'%';
-                        $query->where(function ($sub) use ($keyword) {
-                            $sub->where('name', 'like', $keyword)
-                                ->orWhere('model_code', 'like', $keyword)
-                                ->orWhere('function', 'like', $keyword);
-                        });
-                    })
-                    ->ordered()
-                    ->paginate(9)
-                    ->withQueryString();
-            }
-
-            return view('public.products.index', compact('categories', 'machines', 'activeCategory'));
+            return view('public.products.index', compact(
+                'cocoaMachines',
+                'coffeeMachines',
+                'cocoaCategories',
+                'coffeeCategories',
+                'keyword',
+                'selectedSeries'
+            ));
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('ProductController@index error: ' . $e->getMessage());
 
-            $categories = collect();
-            $machines = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 9);
-            $activeCategory = null;
+            return view('public.products.index', [
+                'cocoaMachines' => collect(),
+                'coffeeMachines' => collect(),
+                'cocoaCategories' => collect(),
+                'coffeeCategories' => collect(),
+                'keyword' => '',
+                'selectedSeries' => '',
+            ]);
+        }
+    }
 
-            return view('public.products.index', compact('categories', 'machines', 'activeCategory'));
+    /**
+     * Halaman khusus lini mesin pengolahan kakao (MD-Cocoa Series).
+     */
+    public function cocoaSeries(Request $request): View
+    {
+        try {
+            $keyword = $request->string('q')->trim()->toString();
+            $categorySlug = $request->string('kategori')->trim()->toString();
+
+            $query = Machine::query()
+                ->active()
+                ->forCocoa()
+                ->with(['category', 'images'])
+                ->ordered();
+
+            if ($keyword !== '') {
+                $query->where(function ($q) use ($keyword) {
+                    $q->where('name', 'like', "%{$keyword}%")
+                      ->orWhere('model_code', 'like', "%{$keyword}%")
+                      ->orWhere('function', 'like', "%{$keyword}%")
+                      ->orWhereHas('category', fn ($c) => $c->where('name', 'like', "%{$keyword}%"));
+                });
+            }
+
+            if ($categorySlug !== '') {
+                $query->whereHas('category', fn ($c) => $c->where('slug', $categorySlug));
+            }
+
+            $machines = $query->paginate(6)->withQueryString()->fragment('katalog-kakao');
+
+            $categories = Category::query()
+                ->active()
+                ->forCocoa()
+                ->ordered()
+                ->withCount(['machines' => fn ($q) => $q->active()->forCocoa()])
+                ->get();
+
+            $activeCategory = $categorySlug !== '' ? $categories->firstWhere('slug', $categorySlug) : null;
+
+            return view('public.products.cocoa_series', compact(
+                'machines',
+                'categories',
+                'keyword',
+                'categorySlug',
+                'activeCategory'
+            ));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('ProductController@cocoaSeries error: ' . $e->getMessage());
+
+            return view('public.products.cocoa_series', [
+                'machines' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 6),
+                'categories' => collect(),
+                'keyword' => '',
+                'categorySlug' => '',
+                'activeCategory' => null,
+            ]);
+        }
+    }
+
+    /**
+     * Halaman khusus lini mesin pengolahan kopi (MD-Coffee Series).
+     */
+    public function coffeeSeries(Request $request): View
+    {
+        try {
+            $keyword = $request->string('q')->trim()->toString();
+            $categorySlug = $request->string('kategori')->trim()->toString();
+
+            $query = Machine::query()
+                ->active()
+                ->forCoffee()
+                ->with(['category', 'images'])
+                ->ordered();
+
+            if ($keyword !== '') {
+                $query->where(function ($q) use ($keyword) {
+                    $q->where('name', 'like', "%{$keyword}%")
+                      ->orWhere('model_code', 'like', "%{$keyword}%")
+                      ->orWhere('function', 'like', "%{$keyword}%")
+                      ->orWhereHas('category', fn ($c) => $c->where('name', 'like', "%{$keyword}%"));
+                });
+            }
+
+            if ($categorySlug !== '') {
+                $query->whereHas('category', fn ($c) => $c->where('slug', $categorySlug));
+            }
+
+            $machines = $query->paginate(6)->withQueryString()->fragment('katalog-kopi');
+
+            $categories = Category::query()
+                ->active()
+                ->forCoffee()
+                ->ordered()
+                ->withCount(['machines' => fn ($q) => $q->active()->forCoffee()])
+                ->get();
+
+            $activeCategory = $categorySlug !== '' ? $categories->firstWhere('slug', $categorySlug) : null;
+
+            return view('public.products.coffe_series', compact(
+                'machines',
+                'categories',
+                'keyword',
+                'categorySlug',
+                'activeCategory'
+            ));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('ProductController@coffeeSeries error: ' . $e->getMessage());
+
+            return view('public.products.coffe_series', [
+                'machines' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 6),
+                'categories' => collect(),
+                'keyword' => '',
+                'categorySlug' => '',
+                'activeCategory' => null,
+            ]);
         }
     }
 

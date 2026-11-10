@@ -58,6 +58,33 @@ class Payment extends Model
         'attempt' => 1,
     ];
 
+    protected static function booted(): void
+    {
+        static::saved(function (Payment $payment) {
+            \Illuminate\Support\Facades\Cache::forget('admin_orders_stats');
+            if ($payment->order_id) {
+                $order = $payment->order;
+                if ($order && $order->customer_id) {
+                    \Illuminate\Support\Facades\Cache::forget("api_orders_customer_{$order->customer_id}");
+                    \Illuminate\Support\Facades\Cache::forget("api_order_detail_{$order->id}");
+                    \Illuminate\Support\Facades\Cache::forget("api_order_detail_{$order->order_code}");
+                }
+            }
+        });
+
+        static::deleted(function (Payment $payment) {
+            \Illuminate\Support\Facades\Cache::forget('admin_orders_stats');
+            if ($payment->order_id) {
+                $order = $payment->order;
+                if ($order && $order->customer_id) {
+                    \Illuminate\Support\Facades\Cache::forget("api_orders_customer_{$order->customer_id}");
+                    \Illuminate\Support\Facades\Cache::forget("api_order_detail_{$order->id}");
+                    \Illuminate\Support\Facades\Cache::forget("api_order_detail_{$order->order_code}");
+                }
+            }
+        });
+    }
+
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);

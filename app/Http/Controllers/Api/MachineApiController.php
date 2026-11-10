@@ -18,45 +18,56 @@ class MachineApiController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-            $query = Machine::query()
-                ->with(['category', 'images'])
-                ->where('is_active', true);
+            $version = \Illuminate\Support\Facades\Cache::get('api_machines_version', 1);
+            $cacheKey = "api_machines_v{$version}_" . md5(json_encode($request->all()));
 
-            if ($request->filled('category_id')) {
-                $query->where('category_id', $request->input('category_id'));
-            }
+            $machines = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($request) {
+                $query = Machine::query()
+                    ->with(['category', 'images'])
+                    ->where('is_active', true);
 
-            if ($request->filled('search')) {
-                $search = $request->input('search');
-                $query->where(function ($q) use ($search) {
-                    $q->where('name', 'ilike', "%{$search}%")
-                      ->orWhere('model_code', 'ilike', "%{$search}%")
-                      ->orWhere('function', 'ilike', "%{$search}%")
-                      ->orWhere('description', 'ilike', "%{$search}%");
-                });
-            }
+                if ($request->filled('category_id')) {
+                    $query->where('category_id', $request->input('category_id'));
+                }
 
-            $machines = $query->latest('id')->get()->map(function ($m) {
-                return [
-                    'id' => $m->id,
-                    'name' => $m->name,
-                    'slug' => $m->slug,
-                    'model_code' => $m->model_code,
-                    'category' => $m->category?->name ?? 'Mesin Industri',
-                    'category_id' => $m->category_id,
-                    'price' => (float) ($m->price ?? 145000000),
-                    'function' => $m->function,
-                    'description' => $m->description,
-                    'capacity' => $m->capacity,
-                    'power' => $m->power,
-                    'dimension' => $m->dimension,
-                    'weight' => $m->weight,
-                    'specifications' => $m->specifications,
-                    'image_url' => $m->primaryImageUrl() ?? $m->photo ?? 'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?w=800&auto=format&fit=crop&q=80',
-                    'images' => $m->images->map(fn($img) => $img->imageUrl())->toArray(),
-                    'rating' => 4.9,
-                    'is_ready_stock' => true,
-                ];
+                if ($request->filled('search')) {
+                    $search = $request->input('search');
+                    $query->where(function ($q) use ($search) {
+                        $q->where('name', 'ilike', "%{$search}%")
+                          ->orWhere('model_code', 'ilike', "%{$search}%")
+                          ->orWhere('function', 'ilike', "%{$search}%")
+                          ->orWhere('description', 'ilike', "%{$search}%");
+                    });
+                }
+
+                return $query->latest('id')->get()->map(function ($m) {
+                    $categoryName = $m->category?->name ?? 'Mesin Pengolahan Kopi';
+                    $isKakao = str_contains(strtolower($m->name . ' ' . $categoryName), 'kakao');
+                    $isHulu = str_contains(strtolower($m->name . ' ' . $m->function), 'pulper') || str_contains(strtolower($m->name . ' ' . $m->function), 'huller') || str_contains(strtolower($m->name . ' ' . $m->function), 'fermentasi') || str_contains(strtolower($m->name . ' ' . $m->function), 'pengering');
+
+                    return [
+                        'id' => $m->id,
+                        'name' => $m->name,
+                        'slug' => $m->slug,
+                        'model_code' => $m->model_code,
+                        'category' => $categoryName,
+                        'category_id' => $m->category_id,
+                        'commodity' => $isKakao ? 'Kakao' : 'Kopi',
+                        'process_stage' => $isHulu ? 'Hulu' : 'Hilir',
+                        'price' => (float) ($m->price > 0 ? $m->price : ($m->id == 1 ? 18500000 : 25000000)),
+                        'function' => $m->function,
+                        'description' => $m->description,
+                        'capacity' => $m->capacity,
+                        'power' => $m->power,
+                        'dimension' => $m->dimension,
+                        'weight' => $m->weight,
+                        'specifications' => $m->specifications,
+                        'image_url' => $this->resolveMachineImage($m),
+                        'images' => $m->images->map(fn($img) => $img->imageUrl())->toArray(),
+                        'rating' => 4.9,
+                        'is_ready_stock' => true,
+                    ];
+                })->toArray();
             });
 
             return response()->json([
@@ -150,5 +161,39 @@ class MachineApiController extends Controller
                 'error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
+    }
+
+    /**
+     * Resolusi URL foto mesin berkualitas tinggi untuk mobile app
+     */
+    private function resolveMachineImage(Machine $m): string
+    {
+        $primary = $m->primaryImageUrl();
+        if ($primary && !str_contains($primary, 'placeholder.svg')) {
+            return $primary;
+        }
+
+        $name = strtolower($m->name . ' ' . $m->model_code . ' ' . ($m->category?->name ?? ''));
+
+        if (str_contains($name, 'roast') || str_contains($name, 'sangrai')) {
+            return 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=800&auto=format&fit=crop&q=80';
+        }
+        if (str_contains($name, 'pulper') || str_contains($name, 'basah')) {
+            return 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800&auto=format&fit=crop&q=80';
+        }
+        if (str_contains($name, 'huller') || str_contains($name, 'kering')) {
+            return 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=800&auto=format&fit=crop&q=80';
+        }
+        if (str_contains($name, 'kakao') || str_contains($name, 'fermentasi') || str_contains($name, 'pengering')) {
+            return 'https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=800&auto=format&fit=crop&q=80';
+        }
+        if (str_contains($name, 'grinder') || str_contains($name, 'penepung')) {
+            return 'https://images.unsplash.com/photo-1587080413959-06b859fb107d?w=800&auto=format&fit=crop&q=80';
+        }
+        if (str_contains($name, 'espresso') || str_contains($name, 'craft')) {
+            return 'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?w=800&auto=format&fit=crop&q=80';
+        }
+
+        return 'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?w=800&auto=format&fit=crop&q=80';
     }
 }

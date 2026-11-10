@@ -14,9 +14,11 @@ class Machine extends Model
 {
     protected $fillable = [
         'category_id',
+        'series',
         'name',
         'slug',
         'model_code',
+        'price',
         'function',
         'description',
         'specifications',
@@ -31,6 +33,7 @@ class Machine extends Model
     ];
 
     protected $casts = [
+        'price' => 'decimal:2',
         'is_featured' => 'boolean',
         'is_active' => 'boolean',
         'sort_order' => 'integer',
@@ -64,12 +67,14 @@ class Machine extends Model
         static::saved(function (Machine $machine): void {
             \Illuminate\Support\Facades\Cache::forget("machine_model_slug_{$machine->slug}");
             \Illuminate\Support\Facades\Cache::forget("machine_related_{$machine->id}");
+            \Illuminate\Support\Facades\Cache::forget("api_machines_all");
             \App\Support\Site::flushPublicCache();
         });
 
         static::deleted(function (Machine $machine): void {
             \Illuminate\Support\Facades\Cache::forget("machine_model_slug_{$machine->slug}");
             \Illuminate\Support\Facades\Cache::forget("machine_related_{$machine->id}");
+            \Illuminate\Support\Facades\Cache::forget("api_machines_all");
             \App\Support\Site::flushPublicCache();
         });
     }
@@ -92,6 +97,53 @@ class Machine extends Model
     public function scopeOrdered(Builder $query): Builder
     {
         return $query->orderBy('sort_order')->orderBy('name');
+    }
+
+    public function scopeForCoffee(Builder $query): Builder
+    {
+        return $query->where(function ($q) {
+            $q->where('series', 'coffee')
+              ->orWhere('series', 'both')
+              ->orWhere(function ($sub) {
+                  $sub->whereNull('series')
+                      ->where(function ($inner) {
+                          $inner->where('name', 'like', '%kopi%')
+                                ->orWhere('name', 'like', '%coffee%')
+                                ->orWhere('function', 'like', '%kopi%')
+                                ->orWhere('function', 'like', '%coffee%')
+                                ->orWhereHas('category', function ($cat) {
+                                    $cat->where('series', 'coffee')
+                                        ->orWhere('series', 'both')
+                                        ->orWhere('name', 'like', '%kopi%')
+                                        ->orWhere('slug', 'like', '%kopi%');
+                                });
+                      });
+              });
+        });
+    }
+
+    public function scopeForCocoa(Builder $query): Builder
+    {
+        return $query->where(function ($q) {
+            $q->where('series', 'cocoa')
+              ->orWhere('series', 'both')
+              ->orWhere(function ($sub) {
+                  $sub->whereNull('series')
+                      ->where(function ($inner) {
+                          $inner->where('name', 'like', '%kakao%')
+                                ->orWhere('name', 'like', '%cocoa%')
+                                ->orWhere('name', 'like', '%cokelat%')
+                                ->orWhere('function', 'like', '%kakao%')
+                                ->orWhere('function', 'like', '%cocoa%')
+                                ->orWhereHas('category', function ($cat) {
+                                    $cat->where('series', 'cocoa')
+                                        ->orWhere('series', 'both')
+                                        ->orWhere('name', 'like', '%kakao%')
+                                        ->orWhere('slug', 'like', '%kakao%');
+                                });
+                      });
+              });
+        });
     }
 
     public function mainImageUrl(): ?string
