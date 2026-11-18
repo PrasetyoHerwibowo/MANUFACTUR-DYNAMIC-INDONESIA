@@ -35,6 +35,9 @@ class Order extends Model
     protected $fillable = [
         'customer_id',
         'order_code',
+        'serial_number',
+        'warranty_period_months',
+        'warranty_expiry_date',
         'total_amount',
         'dp_amount',
         'pelunasan_amount',
@@ -55,6 +58,8 @@ class Order extends Model
         'pelunasan_amount' => 'decimal:2',
         'payment_deadline' => 'datetime',
         'paid_at' => 'datetime',
+        'warranty_period_months' => 'integer',
+        'warranty_expiry_date' => 'datetime',
     ];
 
     protected $attributes = [
@@ -106,6 +111,80 @@ class Order extends Model
         return $this->hasOne(Payment::class)->latestOfMany();
     }
 
+    public function serviceBookings(): HasMany
+    {
+        return $this->hasMany(ServiceBooking::class);
+    }
+
+    public function warrantyClaims(): HasMany
+    {
+        return $this->hasMany(WarrantyClaim::class);
+    }
+
+    /**
+     * Resolusi Serial Number Mesin.
+     * Jika belum diatur di database, dibuatkan otomatis format resmi: SN-TAHUN-MDI-XXXX.
+     */
+    public function getSerialNumberAttribute(?string $value): string
+    {
+        if (filled($value)) {
+            return $value;
+        }
+
+        $year = $this->created_at ? $this->created_at->format('Y') : date('Y');
+        return 'SN-' . $year . '-MDI-' . str_pad((string) $this->id, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Tanggal Berakhir Garansi Resmi (Secara default 2 tahun dari pelunasan/pembuatan).
+     */
+    public function getWarrantyExpiryDateAttribute(?string $value): \Carbon\Carbon
+    {
+        if (filled($value)) {
+            return \Carbon\Carbon::parse($value);
+        }
+
+        $baseDate = $this->paid_at ?: ($this->created_at ?: now());
+        return $baseDate->copy()->addMonths($this->warranty_period_months ?: 24);
+    }
+
+    /**
+     * Cek apakah pesanan masih berada dalam batas waktu masa garansi aktif.
+     */
+    public function isWarrantyActive(): bool
+    {
+        return now()->lessThanOrEqualTo($this->warranty_expiry_date);
+    }
+
+    /**
+     * Cek apakah pembayaran DP 50% sudah diverifikasi lunas/valid.
+     */
+    public function isDpVerified(): bool
+    {
+        return $this->payments()
+            ->where('status', Payment::STATUS_LUNAS)
+            ->where('notes', 'not like', '%Pelunasan%')
+            ->exists() || $this->isPelunasanVerified();
+    }
+
+    /**
+     * Cek apakah pembayaran pelunasan sisa 50% sudah diverifikasi lunas/valid oleh admin.
+     */
+    public function isPelunasanVerified(): bool
+    {
+        // 1. Ada record pembayaran pelunasan berstatus lunas
+        $hasPaidPelunasan = $this->payments()
+            ->where('status', Payment::STATUS_LUNAS)
+            ->where('notes', 'like', '%Pelunasan%')
+            ->exists();
+
+        // 2. Atau total uang yang tercatat lunas mencukupi total nilai pesanan
+        $totalPaid = (float) $this->payments()->where('status', Payment::STATUS_LUNAS)->sum('amount');
+        $isPaidInFull = $totalPaid >= (float) $this->total_amount && (float) $this->total_amount > 0;
+
+        return $hasPaidPelunasan || $isPaidInFull || $this->status === self::STATUS_LUNAS;
+    }
+
     public static function statusLabels(): array
     {
         return [
@@ -143,7 +222,7 @@ class Order extends Model
 
     public function scopeStatus(Builder $query, ?string $status): Builder
     {
-        return $query->when(filled($status), fn (Builder $sub) => $sub->where('status', $status));
+        return $query->when(filled($status), fn(Builder $sub) => $sub->where('status', $status));
     }
 
     public function pendingPayment(): ?Payment

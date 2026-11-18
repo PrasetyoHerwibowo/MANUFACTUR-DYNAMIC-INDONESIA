@@ -22,6 +22,13 @@
             ],
         ],
         [
+            'group' => 'Layanan Purna Jual',
+            'items' => [
+                ['route' => 'admin.services.index', 'icon' => 'fas fa-wrench', 'label' => 'Booking Servis', 'match' => 'admin.services.*', 'badge' => 'services'],
+                ['route' => 'admin.warranties.index', 'icon' => 'fas fa-shield-alt', 'label' => 'Klaim Garansi', 'match' => 'admin.warranties.*', 'badge' => 'warranties'],
+            ],
+        ],
+        [
             'group' => 'Website',
             'items' => [
                 ['route' => 'admin.profile.edit', 'icon' => 'fas fa-building', 'label' => 'Profil Perusahaan', 'match' => 'admin.profile.*'],
@@ -37,10 +44,14 @@
 
     $currentUser = auth()->user();
     $pendingPayments = \Illuminate\Support\Facades\Cache::remember('admin_pending_payments_count', 60, fn () => \App\Models\Payment::query()->pending()->count());
+    $pendingServices = \Illuminate\Support\Facades\Cache::remember('admin_pending_services_count', 60, fn () => \App\Models\ServiceBooking::whereIn('status', [\App\Models\ServiceBooking::STATUS_PENDING, \App\Models\ServiceBooking::STATUS_MENUNGGU])->count());
+    $pendingWarranties = \Illuminate\Support\Facades\Cache::remember('admin_pending_warranties_count', 60, fn () => \App\Models\WarrantyClaim::where('status', \App\Models\WarrantyClaim::STATUS_DALAM_PENINJAUAN)->count());
 
     /** Jumlah notifikasi pada sebuah item menu. */
     $badgeCount = fn (array $item): int => match ($item['badge'] ?? null) {
         'payments' => $pendingPayments,
+        'services' => $pendingServices,
+        'warranties' => $pendingWarranties,
         default => 0,
     };
 @endphp

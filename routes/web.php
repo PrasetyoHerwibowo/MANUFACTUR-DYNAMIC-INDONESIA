@@ -8,6 +8,8 @@ use App\Http\Controllers\Admin\CustomerController as AdminCustomerController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\MachineController as AdminMachineController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
+use App\Http\Controllers\Admin\ServiceBookingController as AdminServiceBookingController;
+use App\Http\Controllers\Admin\WarrantyClaimController as AdminWarrantyClaimController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProductController;
@@ -92,6 +94,22 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('pelanggan/{customer}/ubah', [AdminCustomerController::class, 'edit'])->name('customers.edit');
         Route::put('pelanggan/{customer}', [AdminCustomerController::class, 'update'])->name('customers.update');
         Route::delete('pelanggan/{customer}', [AdminCustomerController::class, 'destroy'])->name('customers.destroy');
+
+        // Layanan Purna Jual: Booking Servis Teknisi
+        Route::get('servis', [AdminServiceBookingController::class, 'index'])->name('services.index');
+        Route::post('servis/jadwal', [AdminServiceBookingController::class, 'updateSchedule'])->name('services.schedule.update');
+        Route::get('servis/{service}', [AdminServiceBookingController::class, 'show'])->name('services.show');
+        Route::put('servis/{service}/verifikasi', [AdminServiceBookingController::class, 'verify'])->name('services.verify');
+        Route::put('servis/{service}/tugaskan-teknisi', [AdminServiceBookingController::class, 'assignTechnician'])->name('services.assign');
+        Route::put('servis/{service}/selesai', [AdminServiceBookingController::class, 'completeService'])->name('services.complete');
+        Route::delete('servis/{service}', [AdminServiceBookingController::class, 'destroy'])->name('services.destroy');
+
+        // Layanan Purna Jual: Klaim Garansi & Jadwal Kunjungan Perbaikan
+        Route::get('garansi', [AdminWarrantyClaimController::class, 'index'])->name('warranties.index');
+        Route::get('garansi/{warranty}', [AdminWarrantyClaimController::class, 'show'])->name('warranties.show');
+        Route::put('garansi/{warranty}/verifikasi', [AdminWarrantyClaimController::class, 'verify'])->name('warranties.verify');
+        Route::put('garansi/{warranty}/status-kunjungan', [AdminWarrantyClaimController::class, 'updateVisitStatus'])->name('warranties.visit.update');
+        Route::delete('garansi/{warranty}', [AdminWarrantyClaimController::class, 'destroy'])->name('warranties.destroy');
 
         // Akun admin
         Route::get('akun', [AccountController::class, 'edit'])->name('account.edit');

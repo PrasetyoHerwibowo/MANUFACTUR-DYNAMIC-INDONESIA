@@ -582,7 +582,7 @@
                             <div class="space-y-4">
                                 <div class="rounded-xl bg-indigo-50 p-3 text-xs text-indigo-800 border border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-300 dark:border-indigo-800/50">
                                     <p class="font-bold mb-1"><i class="fas fa-info-circle mr-1"></i> Verifikasi Pelunasan Pabrik</p>
-                                    Jika mutasi pelunasan valid, pesanan akan ditandai <strong>LUNAS</strong> dan status garansi resmi pabrik (After-Sales) otomatis diaktifkan.
+                                    Jika mutasi pelunasan valid, pesanan akan ditandai <strong>LUNAS</strong> dan tahap produksi otomatis dilanjutkan ke <strong>Tahap 6: Pengiriman & Instalasi Teknisi</strong>.
                                 </div>
 
                                 {{-- Verifikasi Pelunasan Real --}}
@@ -594,7 +594,7 @@
 
                                     <button type="submit"
                                             class="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-indigo-700 flex items-center justify-center gap-2">
-                                        <i class="fas fa-check-double"></i> Verifikasi Pelunasan (Lunas & Garansi Aktif)
+                                        <i class="fas fa-shipping-fast"></i> Verifikasi Pelunasan (Lanjut ke Pengiriman & Instalasi)
                                     </button>
                                 </form>
 
@@ -623,7 +623,7 @@
                                 <i class="fas fa-check-double text-base text-emerald-600"></i>
                                 <div>
                                     <p class="font-bold">Pelunasan Sah & Lunas</p>
-                                    <p class="text-[11px] text-emerald-700 dark:text-emerald-400">Garansi resmi pabrik dan layanan after-sales aktif.</p>
+                                    <p class="text-[11px] text-emerald-700 dark:text-emerald-400">Pembayaran 100% lunas. Unit siap dikirim atau dalam masa layanan after-sales.</p>
                                 </div>
                             </div>
                         @endif
@@ -673,11 +673,29 @@
                         <select name="production_status" id="production_status"
                                 class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-bold outline-none focus:border-coffee-500 focus:ring-2 focus:ring-coffee-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
                             @foreach (\App\Models\Order::productionStageLabels() as $stageValue => $stageLabel)
-                                <option value="{{ $stageValue }}" @selected($order->production_status === $stageValue)>
-                                    {{ $stageLabel }}
+                                @php
+                                    $isLocked = false;
+                                    $lockReason = '';
+                                    if (in_array($stageValue, [\App\Models\Order::STAGE_PENGIRIMAN_INSTALASI, \App\Models\Order::STAGE_AFTER_SALES]) && ! $order->isPelunasanVerified()) {
+                                        $isLocked = true;
+                                        $lockReason = ' (🔒 Perlu Verifikasi Pelunasan)';
+                                    } elseif (in_array($stageValue, [\App\Models\Order::STAGE_PERSIAPAN_BAHAN, \App\Models\Order::STAGE_PROSES_PRODUKSI, \App\Models\Order::STAGE_QUALITY_CONTROL, \App\Models\Order::STAGE_MENUNGGU_PELUNASAN]) && ! $order->isDpVerified()) {
+                                        $isLocked = true;
+                                        $lockReason = ' (🔒 Perlu Verifikasi DP)';
+                                    }
+                                @endphp
+                                <option value="{{ $stageValue }}" @selected($order->production_status === $stageValue) @disabled($isLocked)>
+                                    {{ $stageLabel }}{{ $lockReason }}
                                 </option>
                             @endforeach
                         </select>
+
+                        @if (! $order->isPelunasanVerified())
+                            <p class="text-[11px] text-amber-600 dark:text-amber-400 mt-2 font-medium flex items-center gap-1.5">
+                                <i class="fas fa-lock"></i>
+                                Tahap 6 (Pengiriman & Instalasi) terkunci sampai bukti pelunasan sisa 50% diverifikasi sah.
+                            </p>
+                        @endif
                     </div>
 
                     <div>

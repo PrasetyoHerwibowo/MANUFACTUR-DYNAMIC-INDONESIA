@@ -33,6 +33,47 @@
 
 @section('content')
     <div class="page active animate-fade-in" id="page-dashboard">
+        {{-- Banner Notifikasi Layanan Purna Jual (Booking Servis & Klaim Garansi Masuk) --}}
+        @if (($pendingServices ?? 0) > 0 || ($pendingWarranties ?? 0) > 0)
+            <div class="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                @if (($pendingServices ?? 0) > 0)
+                    <div class="flex items-center justify-between rounded-2xl border border-amber-200 bg-amber-50/80 p-4 shadow-sm dark:border-amber-800/50 dark:bg-amber-950/30">
+                        <div class="flex items-center gap-3">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm">
+                                <i class="fas fa-wrench text-sm"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-amber-900 dark:text-amber-200">{{ $pendingServices }} Booking Servis Menunggu Verifikasi</h3>
+                                <p class="text-xs text-amber-700 dark:text-amber-400">Customer mengajukan jadwal kunjungan maintenance & teknisi.</p>
+                            </div>
+                        </div>
+                        <a href="{{ route('admin.services.index', ['status' => 'menunggu_verifikasi']) }}"
+                           class="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-3.5 py-1.5 text-xs font-bold text-white shadow transition hover:bg-amber-700">
+                            Verifikasi <i class="fas fa-arrow-right text-[10px]"></i>
+                        </a>
+                    </div>
+                @endif
+
+                @if (($pendingWarranties ?? 0) > 0)
+                    <div class="flex items-center justify-between rounded-2xl border border-red-200 bg-red-50/80 p-4 shadow-sm dark:border-red-800/50 dark:bg-red-950/30">
+                        <div class="flex items-center gap-3">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-500 text-white shadow-sm">
+                                <i class="fas fa-shield-alt text-sm"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-red-900 dark:text-red-200">{{ $pendingWarranties }} Klaim Garansi Menunggu Pemeriksaan</h3>
+                                <p class="text-xs text-red-700 dark:text-red-400">Periksa foto/video kerusakan fisik mesin yang diunggah.</p>
+                            </div>
+                        </div>
+                        <a href="{{ route('admin.warranties.index', ['status' => 'dalam_peninjauan']) }}"
+                           class="inline-flex items-center gap-1.5 rounded-xl bg-red-600 px-3.5 py-1.5 text-xs font-bold text-white shadow transition hover:bg-red-700">
+                            Periksa Bukti <i class="fas fa-arrow-right text-[10px]"></i>
+                        </a>
+                    </div>
+                @endif
+            </div>
+        @endif
+
         {{-- Card Tunggal Dashboard Terpadu (Kompak, Rapat & Selaras Desaind.md) --}}
         <div class="glass-card overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-sm dark:border-gray-700/80 dark:bg-gray-800">
 

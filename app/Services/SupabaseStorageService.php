@@ -15,15 +15,15 @@ class SupabaseStorageService
     private string $bucket;
 
     /**
-     * Tipe MIME gambar yang diizinkan dan ekstensi amannya.
+     * Tipe MIME berkas yang diizinkan dan ekstensi amannya (SVG ditiadakan demi keamanan).
      */
     private const ALLOWED_MIME_TYPES = [
         'image/jpeg' => 'jpg',
         'image/pjpeg' => 'jpg',
         'image/png' => 'png',
         'image/webp' => 'webp',
-        'image/gif' => 'gif',
-        'image/svg+xml' => 'svg',
+        'application/pdf' => 'pdf',
+        'video/mp4' => 'mp4',
     ];
 
     public function __construct()

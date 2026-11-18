@@ -333,12 +333,12 @@ class OrderController extends Controller
                     }
 
                     if ($isPelunasan) {
-                        // Jika bukti pelunasan disetujui: Order berstatus LUNAS & Tahap: After-Sales Service (Selesai Garansi Resmi Aktif)
+                        // Jika bukti pelunasan disetujui: Order berstatus LUNAS & Tahap: Pengiriman & Instalasi Teknisi (Tahap 6)
                         $order->update([
                             'status' => Order::STATUS_LUNAS,
-                            'production_status' => Order::STAGE_AFTER_SALES,
+                            'production_status' => Order::STAGE_PENGIRIMAN_INSTALASI,
                             'paid_at' => now(),
-                            'notes' => trim(($order->notes ? $order->notes . "\n" : '') . '[VERIFIKASI FINANCE ' . date('d/m/Y H:i') . ']: Bukti Pelunasan disetujui REAL. Pesanan LUNAS & garansi resmi 2 tahun aktif.'),
+                            'notes' => trim(($order->notes ? $order->notes . "\n" : '') . '[VERIFIKASI FINANCE ' . date('d/m/Y H:i') . ']: Bukti Pelunasan disetujui REAL. Pesanan LUNAS. Masuk Tahap 6: Pengiriman & Instalasi Teknisi.'),
                         ]);
                     } else {
                         // Jika bukti DP 50% disetujui: Majukan ke tahap produksi berikutnya
@@ -384,7 +384,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Update tahap produksi pesanan secara langsung (7 Tahap Manufaktur).
+     * Update tahap produksi pesanan secara langsung (7 Tahap Manufaktur) dengan Access Control Ketat.
      */
     public function updateProductionStage(Request $request, Order $order): RedirectResponse
     {
@@ -395,6 +395,27 @@ class OrderController extends Controller
 
         try {
             $newStage = $validated['production_status'];
+
+            // 1. ACCESS CONTROL: Cegah melanjutkan ke Tahap 6 (Pengiriman) atau Tahap 7 jika Pelunasan belum divalidasi/lunas
+            if (in_array($newStage, [Order::STAGE_PENGIRIMAN_INSTALASI, Order::STAGE_AFTER_SALES])) {
+                if (! $order->isPelunasanVerified()) {
+                    return back()->with(
+                        'error',
+                        'Akses Ditolak: Pesanan masih dalam tahap Menunggu Pelunasan Sisa 50%. Admin wajib memverifikasi dan menyetujui bukti pembayaran pelunasan terlebih dahulu sebelum dapat melanjutkan ke tahap Pengiriman & Instalasi Teknisi.'
+                    );
+                }
+            }
+
+            // 2. ACCESS CONTROL: Cegah melanjutkan ke tahap produksi 2, 3, 4, 5 jika DP belum diverifikasi sah
+            if (in_array($newStage, [Order::STAGE_PERSIAPAN_BAHAN, Order::STAGE_PROSES_PRODUKSI, Order::STAGE_QUALITY_CONTROL, Order::STAGE_MENUNGGU_PELUNASAN])) {
+                if (! $order->isDpVerified()) {
+                    return back()->with(
+                        'error',
+                        'Akses Ditolak: Bukti DP 50% belum diverifikasi sah. Silakan periksa dan setujui bukti transfer DP terlebih dahulu.'
+                    );
+                }
+            }
+
             $updateData = [
                 'production_status' => $newStage,
             ];

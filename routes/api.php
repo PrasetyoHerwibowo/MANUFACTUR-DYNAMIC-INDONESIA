@@ -23,6 +23,28 @@ Route::get('/machines', [MachineApiController::class, 'index']);
 Route::get('/machines/{id}', [MachineApiController::class, 'show']);
 Route::get('/categories', [MachineApiController::class, 'categories']);
 
+// Jadwal Servis Tersedia & Ketersediaan Kuota (Dapat diakses publik)
+Route::get('/services/available-dates', [ServiceApiController::class, 'availableDates']);
+
+// Pesanan / Purchase Order & Bukti Transfer (Dapat diakses oleh Customer B2B & Guest Procurement)
+Route::get('/orders', [OrderApiController::class, 'index']);
+Route::post('/orders', [OrderApiController::class, 'store']);
+Route::get('/orders/{id}', [OrderApiController::class, 'show']);
+Route::post('/orders/{id}/pay-dp', [OrderApiController::class, 'uploadDpProof']);
+Route::post('/orders/{id}/pay-pelunasan', [OrderApiController::class, 'uploadPelunasanProof']);
+Route::post('/orders/{id}/confirm-installation', [OrderApiController::class, 'confirmInstallation']);
+Route::get('/orders/{id}/invoice', [OrderApiController::class, 'invoice']);
+
+// Log Transaksi Pembayaran
+Route::get('/payments', [PaymentApiController::class, 'index']);
+
+// Layanan Servis & Garansi (Dapat diakses oleh Customer B2B)
+Route::get('/services/my-machines', [ServiceApiController::class, 'myMachines']);
+Route::get('/services/bookings', [ServiceApiController::class, 'listBookings']);
+Route::post('/services/bookings', [ServiceApiController::class, 'bookingService']);
+Route::get('/services/warranty-claims', [ServiceApiController::class, 'listWarrantyClaims']);
+Route::post('/services/warranty-claims', [ServiceApiController::class, 'submitWarrantyClaim']);
+
 // Autentikasi Pengguna & Aktivasi Akun (Rate Limited untuk mencegah brute force)
 Route::middleware('throttle:15,1')->group(function () {
     // Registrasi Akun Baru (Kirim 10 digit kode acak ke email)
@@ -58,27 +80,10 @@ Route::middleware('throttle:15,1')->group(function () {
 
 // ==========================================================
 // 2. PROTECTED ROUTES (Wajib Login & Menggunakan Sanctum Bearer Token)
-// Halaman Pesanan, Pembayaran, Servis & Garansi
+// Sesi Akun & Profil Pengguna
 // ==========================================================
 Route::middleware(['auth:sanctum', 'api.customer'])->group(function () {
     // Sesi & Profil Pengguna
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
-
-    // Pesanan / Purchase Order (Page Pesanan di Mobile App)
-    Route::get('/orders', [OrderApiController::class, 'index']);
-    Route::post('/orders', [OrderApiController::class, 'store']);
-    Route::get('/orders/{id}', [OrderApiController::class, 'show']);
-    Route::post('/orders/{id}/pay-dp', [OrderApiController::class, 'uploadDpProof']);
-    Route::post('/orders/{id}/pay-pelunasan', [OrderApiController::class, 'uploadPelunasanProof']);
-    Route::get('/orders/{id}/invoice', [OrderApiController::class, 'invoice']);
-
-    // Log Transaksi Pembayaran
-    Route::get('/payments', [PaymentApiController::class, 'index']);
-
-    // Layanan Servis & Garansi (Page Servis di Mobile App)
-    Route::get('/services/bookings', [ServiceApiController::class, 'listBookings']);
-    Route::post('/services/bookings', [ServiceApiController::class, 'bookingService']);
-    Route::get('/services/warranty-claims', [ServiceApiController::class, 'listWarrantyClaims']);
-    Route::post('/services/warranty-claims', [ServiceApiController::class, 'submitWarrantyClaim']);
 });

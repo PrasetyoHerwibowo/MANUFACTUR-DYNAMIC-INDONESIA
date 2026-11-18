@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Machine;
 use App\Models\Order;
@@ -11,6 +12,7 @@ use App\Models\Payment;
 use App\Support\Reference;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -19,37 +21,71 @@ use Throwable;
 class OrderApiController extends Controller
 {
     /**
+     * Resolusi Pelanggan B2B dari Sesi Login Sanctum atau Data Permintaan
+     */
+    private function resolveCustomer(Request $request): ?Customer
+    {
+        $user = auth('sanctum')->user() ?? $request->user();
+        if ($user && filled($user->email)) {
+            $customer = Customer::where('email', $user->email)->first();
+            if ($customer) {
+                return $customer;
+            }
+        }
+
+        $email = $request->input('email') ?? $request->query('email');
+        if (filled($email)) {
+            $customer = Customer::where('email', trim($email))->first();
+            if ($customer) {
+                return $customer;
+            }
+        }
+
+        $phone = $request->input('phone') ?? $request->input('pic_phone') ?? $request->query('phone');
+        if (filled($phone)) {
+            $customer = Customer::where('phone', trim($phone))->first();
+            if ($customer) {
+                return $customer;
+            }
+        }
+
+        $company = $request->input('company_name') ?? $request->input('company') ?? $request->query('company');
+        if (filled($company)) {
+            $customer = Customer::where('company', 'ilike', '%' . trim($company) . '%')->first();
+            if ($customer) {
+                return $customer;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * GET /api/orders
      */
     public function index(Request $request): JsonResponse
     {
         try {
-            $user = $request->user();
-            if (! $user) {
-                return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
-            }
+            $customer = $this->resolveCustomer($request);
 
-            $customer = \Illuminate\Support\Facades\Cache::remember("customer_email_{$user->email}", 3600, function () use ($user) {
-                return Customer::where('email', $user->email)->first();
-            });
-
-            if (! $customer) {
-                return response()->json([
-                    'success' => true,
-                    'data' => [],
-                ]);
-            }
-
-            $orders = \Illuminate\Support\Facades\Cache::remember("api_orders_customer_{$customer->id}", 60, function () use ($customer) {
-                return Order::with(['items.machine', 'payments', 'customer'])
-                    ->where('customer_id', $customer->id)
+            if ($customer) {
+                $orders = Cache::remember("api_orders_customer_{$customer->id}", 15, function () use ($customer) {
+                    return Order::with(['items.machine.category', 'payments', 'customer'])
+                        ->where('customer_id', $customer->id)
+                        ->latest('id')
+                        ->get()
+                        ->map(fn($order) => $this->formatOrderResponse($order))
+                        ->toArray();
+                });
+            } else {
+                // Tampilkan order terbaru untuk sesi perangkat/guest
+                $orders = Order::with(['items.machine.category', 'payments', 'customer'])
                     ->latest('id')
+                    ->take(15)
                     ->get()
-                    ->map(function ($order) {
-                        return $this->formatOrderResponse($order);
-                    })
+                    ->map(fn($order) => $this->formatOrderResponse($order))
                     ->toArray();
-            });
+            }
 
             return response()->json([
                 'success' => true,
@@ -72,35 +108,24 @@ class OrderApiController extends Controller
     public function show(Request $request, string $id): JsonResponse
     {
         try {
-            $user = $request->user();
-            if (! $user) {
-                return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
-            }
+            $customer = $this->resolveCustomer($request);
 
-            $customer = \Illuminate\Support\Facades\Cache::remember("customer_email_{$user->email}", 3600, function () use ($user) {
-                return Customer::where('email', $user->email)->first();
-            });
+            $order = Order::with(['items.machine.category', 'payments', 'customer'])
+                ->when($customer, fn($q) => $q->where('customer_id', $customer->id))
+                ->where(function ($q) use ($id) {
+                    $q->where('id', is_numeric($id) ? (int) $id : 0)
+                        ->orWhere('order_code', $id);
+                })
+                ->first();
 
-            if (! $customer) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Pesanan tidak ditemukan.',
-                ], 404);
-            }
-
-            $orderData = \Illuminate\Support\Facades\Cache::remember("api_order_detail_{$id}", 60, function () use ($customer, $id) {
-                $order = Order::with(['items.machine', 'payments', 'customer'])
-                    ->where('customer_id', $customer->id)
-                    ->where(function ($q) use ($id) {
-                        $q->where('id', is_numeric($id) ? (int)$id : 0)
-                          ->orWhere('order_code', $id);
-                    })
+            if (!$order) {
+                // Fallback pencarian tanpa filter customer jika menggunakan order_code unik
+                $order = Order::with(['items.machine.category', 'payments', 'customer'])
+                    ->where('order_code', $id)
                     ->first();
+            }
 
-                return $order ? $this->formatOrderResponse($order) : null;
-            });
-
-            if (! $orderData) {
+            if (!$order) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Pesanan tidak ditemukan.',
@@ -109,7 +134,7 @@ class OrderApiController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $orderData,
+                'data' => $this->formatOrderResponse($order),
             ]);
         } catch (Throwable $e) {
             Log::error('OrderApiController show error: ' . $e->getMessage(), ['id' => $id]);
@@ -130,58 +155,176 @@ class OrderApiController extends Controller
     {
         $validated = $request->validate([
             'machine_id' => ['required'],
+            'model_code' => ['nullable', 'string'],
+            'product_name' => ['nullable', 'string'],
+            'machine_name' => ['nullable', 'string'],
+            'unit_price' => ['nullable', 'numeric'],
+            'price' => ['nullable', 'numeric'],
             'quantity' => ['required', 'integer', 'min:1'],
             'delivery_address' => ['required', 'string'],
             'custom_notes' => ['nullable', 'string'],
             'bank_method' => ['nullable', 'string'],
             'dp_proof' => ['nullable', 'string'],
-            'dp_proof_file' => ['nullable', 'file', 'image', 'max:5120'],
+            'dp_proof_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'contact_name' => ['nullable', 'string', 'max:150'],
+            'pic_name' => ['nullable', 'string', 'max:150'],
+            'name' => ['nullable', 'string', 'max:150'],
+            'company_name' => ['nullable', 'string', 'max:150'],
+            'company' => ['nullable', 'string', 'max:150'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'pic_phone' => ['nullable', 'string', 'max:50'],
+            'email' => ['nullable', 'string', 'max:150'],
         ]);
 
         try {
             $rawMachineId = $validated['machine_id'];
+            $rawModelCode = $request->input('model_code');
+            $rawMachineName = $request->input('product_name') ?? $request->input('machine_name');
+
             $machine = null;
-            if (is_numeric($rawMachineId)) {
-                $machine = Machine::find((int) $rawMachineId);
+
+            // 1. Cari berdasarkan ID jika numerik dan ada di database
+            if (is_numeric($rawMachineId) && (int) $rawMachineId > 0) {
+                $machine = Machine::with('category')->find((int) $rawMachineId);
             }
-            if (! $machine) {
-                $machine = Machine::where('model_code', $rawMachineId)
-                    ->orWhere('slug', $rawMachineId)
+
+            // 2. Cari berdasarkan model_code
+            if (!$machine && filled($rawModelCode)) {
+                $machine = Machine::with('category')->where('model_code', trim($rawModelCode))->first();
+            }
+
+            // 3. Cari jika machine_id adalah string model_code atau slug
+            if (!$machine && filled($rawMachineId) && is_string($rawMachineId)) {
+                $machine = Machine::with('category')
+                    ->where('model_code', trim($rawMachineId))
+                    ->orWhere('slug', trim($rawMachineId))
                     ->first();
             }
-            if (! $machine && is_string($rawMachineId)) {
-                if (str_contains(strtolower($rawMachineId), 'roast')) {
-                    $machine = Machine::where('name', 'ilike', '%MicroRoast%')->first()
-                        ?: Machine::where('name', 'ilike', '%roast%')->first();
+
+            // 4. Cari berdasarkan nama mesin (Exact Match & Case-Insensitive)
+            if (!$machine && filled($rawMachineName)) {
+                $machine = Machine::with('category')
+                    ->whereRaw('LOWER(name) = ?', [strtolower(trim($rawMachineName))])
+                    ->first();
+            }
+
+            // 5. Cari berdasarkan potongan nama (Partial Match)
+            if (!$machine && filled($rawMachineName)) {
+                $machine = Machine::with('category')
+                    ->where('name', 'ilike', '%' . trim($rawMachineName) . '%')
+                    ->first();
+            }
+
+            // 6. Jika masih tidak ditemukan (misal produk baru dari katalog):
+            // Daftarkan record Machine baru secara otomatis & dinamis
+            if (!$machine) {
+                $catName = $request->input('category') ?? 'Mesin Industri';
+                $category = Category::where('name', 'ilike', '%' . $catName . '%')->first() ?: Category::first();
+
+                $cleanName = trim($rawMachineName ?: 'Mesin Industri Manufaktur');
+                $cleanModel = trim($rawModelCode ?: ('MDI-' . strtoupper(Str::limit(Str::slug($cleanName, ''), 8, ''))));
+                $slug = Str::slug($cleanName);
+                if (Machine::where('slug', $slug)->exists()) {
+                    $slug .= '-' . Str::lower(Str::random(5));
+                }
+
+                $initialPrice = (float) ($request->input('unit_price') ?? $request->input('price') ?? 25000000);
+
+                $machine = Machine::create([
+                    'name' => $cleanName,
+                    'slug' => $slug,
+                    'model_code' => $cleanModel,
+                    'category_id' => $category?->id ?? 1,
+                    'price' => $initialPrice,
+                    'is_active' => true,
+                ]);
+                $machine->load('category');
+            }
+
+            // Customer Resolution: Mendukung Customer Terotentikasi & Tamu B2B
+            $user = auth('sanctum')->user() ?? $request->user();
+
+            $contactName = trim($request->input('contact_name') ?? $request->input('pic_name') ?? $request->input('name') ?? $user?->name ?? 'Pelanggan Procurement');
+            $companyName = trim($request->input('company_name') ?? $request->input('company') ?? $user?->company ?? ('Mitra ' . $contactName));
+            $phone = trim($request->input('phone') ?? $request->input('pic_phone') ?? $user?->phone ?? '');
+            $email = trim($request->input('email') ?? $user?->email ?? '');
+
+            if (empty($email)) {
+                $slugContact = Str::slug($contactName ?: 'customer', '.');
+                $email = $slugContact . '@client.manufaktur.id';
+            }
+
+            $customer = null;
+            if ($user && filled($user->email)) {
+                $customer = Customer::where('email', $user->email)->first();
+            }
+            if (!$customer && filled($email)) {
+                $customer = Customer::where('email', $email)->first();
+            }
+            if (!$customer && filled($phone)) {
+                $customer = Customer::where('phone', $phone)->first();
+            }
+            if (!$customer && filled($companyName)) {
+                $customer = Customer::where('company', 'ilike', '%' . $companyName . '%')->first();
+            }
+
+            if (!$customer) {
+                $customer = Customer::create([
+                    'customer_code' => Reference::make(Reference::CUSTOMER, Customer::class, 'customer_code'),
+                    'name' => $contactName,
+                    'company' => $companyName,
+                    'email' => $email,
+                    'phone' => $phone ?: null,
+                    'address' => $validated['delivery_address'],
+                ]);
+            } else {
+                $updates = [];
+                if ($contactName && $contactName !== 'Pelanggan Procurement' && (empty($customer->name) || $customer->name === 'Procurement Client')) {
+                    $updates['name'] = $contactName;
+                }
+                if ($companyName && (empty($customer->company) || $customer->company === 'PT Kopi Nusantara Jaya')) {
+                    $updates['company'] = $companyName;
+                }
+                if ($phone && empty($customer->phone)) {
+                    $updates['phone'] = $phone;
+                }
+                if ($validated['delivery_address'] && empty($customer->address)) {
+                    $updates['address'] = $validated['delivery_address'];
+                }
+                if (!empty($updates)) {
+                    $customer->update($updates);
                 }
             }
-            if (! $machine) {
-                $machine = Machine::firstOrFail();
+
+            // Tentukan harga satuan secara dinamis & akurat untuk semua produk
+            $inputPrice = $request->filled('unit_price')
+                ? (float) $request->input('unit_price')
+                : ($request->filled('price') ? (float) $request->input('price') : 0.0);
+            $dbPrice = (float) $machine->price;
+
+            if ($inputPrice > 0) {
+                $unitPrice = $inputPrice;
+                if ($dbPrice <= 0) {
+                    $machine->update(['price' => $unitPrice]);
+                }
+            } elseif ($dbPrice > 0) {
+                $unitPrice = $dbPrice;
+            } else {
+                $unitPrice = 25000000.0;
             }
 
-            $user = $request->user();
-            
-            $customer = Customer::firstOrCreate(
-                ['email' => $user?->email ?? 'procurement@kopinusantara.co.id'],
-                [
-                    'customer_code' => 'CUST-' . strtoupper(substr(uniqid(), -6)),
-                    'name' => $user?->name ?? 'Procurement Client',
-                    'company' => 'PT Kopi Nusantara Jaya',
-                    'phone' => $user?->phone ?? null,
-                    'address' => $validated['delivery_address'],
-                ]
-            );
-
-            $unitPrice = (float) ($machine->price > 0 ? $machine->price : ($machine->id == 1 ? 18500000 : 25000000));
             $totalAmount = $unitPrice * $validated['quantity'];
             $dpAmount = $totalAmount * 0.50;
             $pelunasanAmount = $totalAmount * 0.50;
 
-            do {
-                $orderCode = 'PO-' . date('Ymd') . '-' . strtoupper(Str::random(6));
-            } while (Order::where('order_code', $orderCode)->exists());
+            // Generate nomor PO / Order Code resmi menggunakan format Reference sistem
+            $orderCode = Reference::make(Reference::ORDER, Order::class, 'order_code');
 
-            // Upload bukti transfer DP 50% ke Supabase Storage
+            // Generate nomor seri unik khusus untuk produk mesin yang dipesan
+            $modelCodeClean = preg_replace('/[^A-Za-z0-9]/', '', $machine->model_code ?: 'MDI');
+            $serialNumber = 'SN-' . date('Y') . '-' . $modelCodeClean . '-' . strtoupper(Str::random(4));
+
+            // Upload bukti transfer DP 50% ke Supabase Storage / Penyimpanan Lokal
             $dpProofUrl = $this->resolveAndStoreProof(
                 $validated['dp_proof'] ?? null,
                 $request->file('dp_proof_file'),
@@ -190,14 +333,12 @@ class OrderApiController extends Controller
                 $validated['bank_method'] ?? 'Bank BCA Corporate'
             );
 
-            $order = DB::transaction(function () use (
-                $customer, $orderCode, $totalAmount, $dpAmount, $pelunasanAmount,
-                $validated, $machine, $unitPrice, $dpProofUrl
-            ) {
-                // Status awal saat ada bukti DP: Menunggu Pembayaran & Tahap Timeline: Verifikasi DP
+            $order = DB::transaction(function () use ($customer, $orderCode, $serialNumber, $totalAmount, $dpAmount, $pelunasanAmount, $validated, $machine, $unitPrice, $dpProofUrl) {
+                // Status awal saat ada bukti DP: Menunggu Pembayaran & Tahap Timeline: 1. Verifikasi DP
                 $order = Order::create([
                     'customer_id' => $customer->id,
                     'order_code' => $orderCode,
+                    'serial_number' => $serialNumber,
                     'total_amount' => $totalAmount,
                     'dp_amount' => $dpAmount,
                     'pelunasan_amount' => $pelunasanAmount,
@@ -206,7 +347,7 @@ class OrderApiController extends Controller
                     'dp_proof' => $dpProofUrl,
                     'delivery_address' => $validated['delivery_address'],
                     'custom_notes' => $validated['custom_notes'] ?? null,
-                    'payment_deadline' => now()->addHours(24),
+                    'payment_deadline' => now()->addHours(Order::PAYMENT_WINDOW_HOURS),
                 ]);
 
                 OrderItem::create([
@@ -217,14 +358,14 @@ class OrderApiController extends Controller
                     'subtotal' => $totalAmount,
                 ]);
 
-                // Buat record pembayaran DP 50% (status menunggu sampai diverifikasi oleh admin)
+                // Buat record pembayaran DP 50%
                 $order->payments()->create([
                     'payment_code' => Reference::make(Reference::PAYMENT, Payment::class, 'payment_code'),
                     'attempt' => 1,
                     'method' => Payment::METHOD_TRANSFER_BANK,
                     'amount' => $dpAmount,
                     'status' => Payment::STATUS_MENUNGGU,
-                    'expires_at' => now()->addHours(24),
+                    'expires_at' => now()->addHours(Order::PAYMENT_WINDOW_HOURS),
                     'paid_at' => null,
                     'proof' => $dpProofUrl,
                     'notes' => 'Pembayaran Uang Muka DP 50% via ' . ($validated['bank_method'] ?? 'Transfer Bank') . ' untuk pesanan ' . $orderCode,
@@ -233,11 +374,16 @@ class OrderApiController extends Controller
                 return $order;
             });
 
-            $order->load(['items.machine', 'payments', 'customer']);
+            // Invalidate Cache agar admin dashboard dan API mobile langsung terupdate seketika
+            Cache::forget('admin_orders_stats');
+            Cache::forget('admin_payments_last_expired_check');
+            Cache::forget("api_orders_customer_{$customer->id}");
+
+            $order->load(['items.machine.category', 'payments', 'customer']);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Purchase Order (PO) berhasil dibuat. Bukti transfer DP 50% tersimpan di Supabase dan menunggu verifikasi finance.',
+                'message' => 'Purchase Order (PO) berhasil dibuat. Bukti transfer DP 50% tersimpan dan menunggu verifikasi finance.',
                 'data' => $this->formatOrderResponse($order),
             ], 201);
         } catch (Throwable $e) {
@@ -248,7 +394,7 @@ class OrderApiController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal membuat Purchase Order (PO). Silakan periksa kembali data Anda.',
+                'message' => 'Gagal membuat Purchase Order (PO): ' . $e->getMessage(),
                 'error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
@@ -262,41 +408,41 @@ class OrderApiController extends Controller
     {
         $validated = $request->validate([
             'proof' => ['nullable', 'string'],
-            'proof_file' => ['nullable', 'file', 'image', 'max:5120'],
+            'proof_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'notes' => ['nullable', 'string'],
+            'bank_method' => ['nullable', 'string'],
         ]);
 
         try {
-            $user = $request->user();
-            $customer = Customer::where('email', $user?->email)->first();
+            $customer = $this->resolveCustomer($request);
 
-            if (! $customer) {
+            $order = Order::where(function ($q) use ($id) {
+                $q->where('id', is_numeric($id) ? (int) $id : 0)
+                    ->orWhere('order_code', $id);
+            })->first();
+
+            if (!$order) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Pesanan tidak ditemukan.',
                 ], 404);
             }
 
-            $order = Order::where('customer_id', $customer->id)
-                ->where(function ($q) use ($id) {
-                    $q->where('id', is_numeric($id) ? (int)$id : 0)
-                      ->orWhere('order_code', $id);
-                })
-                ->first();
-
-            if (! $order) {
+            if ($customer && $order->customer_id !== $customer->id) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Pesanan tidak ditemukan atau Anda tidak memiliki akses ke pesanan ini.',
-                ], 404);
+                    'message' => 'Anda tidak memiliki hak akses untuk pesanan ini.',
+                ], 403);
             }
+
+            $bankMethod = $validated['bank_method'] ?? 'Bank BCA Corporate';
 
             $proofUrl = $this->resolveAndStoreProof(
                 $validated['proof'] ?? null,
                 $request->file('proof_file'),
                 $order->order_code,
                 (float) $order->dp_amount,
-                'Bank BCA Corporate'
+                $bankMethod
             );
 
             DB::transaction(function () use ($order, $proofUrl, $validated) {
@@ -321,7 +467,7 @@ class OrderApiController extends Controller
                         'method' => Payment::METHOD_TRANSFER_BANK,
                         'amount' => $order->dp_amount,
                         'status' => Payment::STATUS_MENUNGGU,
-                        'expires_at' => now()->addHours(24),
+                        'expires_at' => now()->addHours(Order::PAYMENT_WINDOW_HOURS),
                         'proof' => $proofUrl,
                         'notes' => 'Pembayaran Uang Muka DP 50% untuk pesanan ' . $order->order_code,
                     ]);
@@ -333,6 +479,9 @@ class OrderApiController extends Controller
                     'production_status' => Order::STAGE_VERIFIKASI_DP,
                 ]);
             });
+
+            Cache::forget('admin_orders_stats');
+            Cache::forget("api_orders_customer_{$order->customer_id}");
 
             return response()->json([
                 'success' => true,
@@ -358,41 +507,41 @@ class OrderApiController extends Controller
     {
         $validated = $request->validate([
             'proof' => ['nullable', 'string'],
-            'proof_file' => ['nullable', 'file', 'image', 'max:5120'],
+            'proof_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'notes' => ['nullable', 'string'],
+            'bank_method' => ['nullable', 'string'],
         ]);
 
         try {
-            $user = $request->user();
-            $customer = Customer::where('email', $user?->email)->first();
+            $customer = $this->resolveCustomer($request);
 
-            if (! $customer) {
+            $order = Order::where(function ($q) use ($id) {
+                $q->where('id', is_numeric($id) ? (int) $id : 0)
+                    ->orWhere('order_code', $id);
+            })->first();
+
+            if (!$order) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Pesanan tidak ditemukan.',
                 ], 404);
             }
 
-            $order = Order::where('customer_id', $customer->id)
-                ->where(function ($q) use ($id) {
-                    $q->where('id', is_numeric($id) ? (int)$id : 0)
-                      ->orWhere('order_code', $id);
-                })
-                ->first();
-
-            if (! $order) {
+            if ($customer && $order->customer_id !== $customer->id) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Pesanan tidak ditemukan atau Anda tidak memiliki akses ke pesanan ini.',
-                ], 404);
+                    'message' => 'Anda tidak memiliki hak akses untuk pesanan ini.',
+                ], 403);
             }
+
+            $bankMethod = $validated['bank_method'] ?? 'Bank BCA Corporate';
 
             $proofUrl = $this->resolveAndStoreProof(
                 $validated['proof'] ?? null,
                 $request->file('proof_file'),
                 $order->order_code . '-PELUNASAN',
                 (float) $order->pelunasan_amount,
-                'Bank BCA Corporate'
+                $bankMethod
             );
 
             DB::transaction(function () use ($order, $proofUrl, $validated) {
@@ -417,7 +566,7 @@ class OrderApiController extends Controller
                         'method' => Payment::METHOD_TRANSFER_BANK,
                         'amount' => $order->pelunasan_amount,
                         'status' => Payment::STATUS_MENUNGGU,
-                        'expires_at' => now()->addHours(24),
+                        'expires_at' => now()->addHours(Order::PAYMENT_WINDOW_HOURS),
                         'proof' => $proofUrl,
                         'notes' => 'Pembayaran Pelunasan Sisa 50% untuk pesanan ' . $order->order_code,
                     ]);
@@ -428,6 +577,9 @@ class OrderApiController extends Controller
                     'production_status' => Order::STAGE_MENUNGGU_PELUNASAN,
                 ]);
             });
+
+            Cache::forget('admin_orders_stats');
+            Cache::forget("api_orders_customer_{$order->customer_id}");
 
             return response()->json([
                 'success' => true,
@@ -446,35 +598,101 @@ class OrderApiController extends Controller
     }
 
     /**
+     * POST /api/orders/{id}/confirm-installation
+     * Konfirmasi penerimaan dan pemasangan unit mesin oleh customer (Tahap 6 -> Tahap 7).
+     */
+    public function confirmInstallation(Request $request, string $id): JsonResponse
+    {
+        try {
+            $customer = $this->resolveCustomer($request);
+
+            $order = Order::where(function ($q) use ($id) {
+                $q->where('id', is_numeric($id) ? (int)$id : 0)
+                  ->orWhere('order_code', $id);
+            })->first();
+
+            if (!$order) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pesanan tidak ditemukan.',
+                ], 404);
+            }
+
+            if ($customer && $order->customer_id !== $customer->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki hak akses untuk pesanan ini.',
+                ], 403);
+            }
+
+            // Validasi alur: Unit hanya dapat dikonfirmasi bila sudah masuk tahap pengiriman atau pelunasan
+            if (! in_array($order->production_status, [Order::STAGE_PENGIRIMAN_INSTALASI, Order::STAGE_AFTER_SALES])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unit mesin belum dalam tahap Pengiriman & Instalasi Teknisi.',
+                ], 422);
+            }
+
+            // Update status pesanan ke Tahap 7: After-Sales Service & Garansi Resmi Aktif
+            DB::transaction(function () use ($order) {
+                $order->update([
+                    'production_status' => Order::STAGE_AFTER_SALES,
+                    'status' => Order::STATUS_LUNAS,
+                    'paid_at' => $order->paid_at ?: now(),
+                    'notes' => trim(($order->notes ? $order->notes . "\n" : '') . '[KONFIRMASI PELANGGAN ' . date('d/m/Y H:i') . ']: Unit mesin telah diterima & dikonfirmasi terpasang oleh pelanggan. Layanan After-Sales Service dan garansi resmi 2 tahun aktif.'),
+                ]);
+            });
+
+            // Invalidate cache
+            Cache::forget('admin_orders_stats');
+            Cache::forget("api_orders_customer_{$order->customer_id}");
+            Cache::forget("api_order_detail_{$order->id}");
+            Cache::forget("api_order_detail_{$order->order_code}");
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Instalasi selesai! Unit telah terpasang dan layanan After-Sales serta garansi resmi 2 tahun kini aktif.',
+                'data' => $this->formatOrderResponse($order->fresh(['items.machine', 'payments', 'customer'])),
+            ]);
+        } catch (Throwable $e) {
+            Log::error('OrderApiController confirmInstallation error: ' . $e->getMessage(), ['id' => $id]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memproses konfirmasi unit terpasang.',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
+    }
+
+    /**
      * GET /api/orders/{id}/invoice
      * Generate data Invoice PDF resmi
      */
     public function invoice(Request $request, string $id): JsonResponse
     {
         try {
-            $user = $request->user();
-            $customer = Customer::where('email', $user?->email)->first();
+            $customer = $this->resolveCustomer($request);
 
-            if (! $customer) {
+            $order = Order::with(['items.machine', 'payments', 'customer'])
+                ->where(function ($q) use ($id) {
+                    $q->where('id', is_numeric($id) ? (int) $id : 0)
+                        ->orWhere('order_code', $id);
+                })
+                ->first();
+
+            if (!$order) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Pesanan untuk invoice tidak ditemukan.',
                 ], 404);
             }
 
-            $order = Order::with(['items.machine', 'payments', 'customer'])
-                ->where('customer_id', $customer->id)
-                ->where(function ($q) use ($id) {
-                    $q->where('id', is_numeric($id) ? (int)$id : 0)
-                      ->orWhere('order_code', $id);
-                })
-                ->first();
-
-            if (! $order) {
+            if ($customer && $order->customer_id !== $customer->id) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Pesanan untuk invoice tidak ditemukan atau Anda tidak memiliki akses.',
-                ], 404);
+                    'message' => 'Anda tidak memiliki akses ke invoice pesanan ini.',
+                ], 403);
             }
 
             $invoiceData = [
@@ -550,13 +768,18 @@ class OrderApiController extends Controller
             $rejectionReason = $latestPayment?->failure_reason ?: 'Bukti transfer ditolak sebagai tidak valid/palsu oleh finance admin.';
         }
 
+        $productName = $firstItem?->machine?->name ?: ($firstItem?->name ?: 'Mesin Industri Manufaktur');
+        $categoryName = $firstItem?->machine?->category?->name ?? 'Mesin Industri';
+        $serialNumber = $order->serial_number ?: ('SN-' . date('Y') . '-' . ($firstItem?->machine?->model_code ?: 'MDI') . '-' . strtoupper(substr(md5($order->id . $order->order_code), 0, 4)));
+
         return [
             'id' => (string) $order->id,
             'po_number' => $order->order_code,
             'company_name' => $order->customer?->company ?? 'PT Kopi Nusantara Jaya',
             'contact_person' => $order->customer?->name ?? 'Bpk. Hendra Wijaya',
-            'product_name' => $firstItem?->name ?? 'Mesin Pengolahan Kopi',
-            'category' => $firstItem?->machine?->category?->name ?? 'Commercial Espresso',
+            'product_name' => $productName,
+            'category' => $categoryName,
+            'model_code' => $firstItem?->machine?->model_code,
             'quantity' => $firstItem?->quantity ?? 1,
             'price_per_unit' => (float) ($firstItem?->unit_price ?? $order->total_amount),
             'total_amount' => (float) $order->total_amount,
@@ -573,6 +796,10 @@ class OrderApiController extends Controller
             'is_dp_rejected' => $isDpRejected,
             'is_pelunasan_rejected' => $isPelunasanRejected,
             'rejection_reason' => $rejectionReason,
+            'serial_number' => $serialNumber,
+            'warranty_period_months' => (int) ($order->warranty_period_months ?: 24),
+            'warranty_expiry_date' => $order->warranty_expiry_date ? $order->warranty_expiry_date->format('d M Y') : $order->created_at->addMonths(24)->format('d M Y'),
+            'is_warranty_active' => $order->isWarrantyActive(),
             'delivery_address' => $order->delivery_address ?? 'Jl. Sudirman No. 45, Jakarta Selatan',
             'custom_notes' => $order->custom_notes ?? '',
             'payments' => $order->payments->map(fn($p) => [
@@ -588,9 +815,9 @@ class OrderApiController extends Controller
     }
 
     /**
-     * Helper untuk upload bukti transfer ke Supabase Storage dengan fallback lokal otomatis.
-     * Menerima UploadedFile atau Base64 data URI (gambar JPG/PNG/WebP atau dokumen PDF).
-     * TIDAK PERNAH membuat SVG dummy / palsu. Hanya menyimpan file asli yang dikirim oleh pelanggan.
+     * Helper untuk upload bukti transfer LANGSUNG ke Supabase Storage (tanpa membebani server lokal).
+     * Menerima UploadedFile atau Base64 data URI (gambar JPG/PNG atau dokumen PDF).
+     * Memvalidasi Magic Bytes MIME asli secara ketat & menolak SVG / Video / file berbahaya.
      */
     private function resolveAndStoreProof(
         ?string $proofString,
@@ -602,37 +829,57 @@ class OrderApiController extends Controller
         $storage = app(\App\Services\SupabaseStorageService::class);
         $safeOrderCode = Str::slug($orderCode, '_');
 
-        // Pastikan folder penyimpanan lokal selalu tersedia
-        $localDir = public_path('uploads/payments');
-        if (! file_exists($localDir)) {
-            @mkdir($localDir, 0755, true);
-        }
+        // Batas maksimal berkas bukti transfer: 5 MB
+        $maxSizeBytes = 5 * 1024 * 1024;
 
         // 1. Jika ada file upload multipart langsung dari form request
         if ($file instanceof \Illuminate\Http\UploadedFile && $file->isValid()) {
-            $ext = strtolower($file->getClientOriginalExtension() ?: 'jpg');
+            if ($file->getSize() > $maxSizeBytes) {
+                Log::warning('resolveAndStoreProof: Berkas melebihi batas maksimal 5 MB.', ['size' => $file->getSize()]);
+                return null;
+            }
+
+            // Baca header 512 byte awal untuk inspeksi Magic Bytes
+            $handle = fopen($file->getRealPath(), 'rb');
+            $header = fread($handle, 512);
+            fclose($handle);
+
+            // Tolak SVG dan XML secara mutlak
+            if (stripos($header, '<svg') !== false || stripos($header, '<?xml') !== false) {
+                Log::warning('resolveAndStoreProof: Format SVG/XML terdeteksi dan ditolak.');
+                return null;
+            }
+
+            // Tolak Video (MP4)
+            if (strlen($header) >= 8 && substr($header, 4, 4) === 'ftyp') {
+                Log::warning('resolveAndStoreProof: File terdeteksi sebagai MP4 Video dan ditolak.');
+                return null;
+            }
+
+            $isPdf = strncmp($header, "%PDF-", 5) === 0;
+            $isJpeg = strncmp($header, "\xFF\xD8\xFF", 3) === 0;
+            $isPng = strncmp($header, "\x89PNG\r\n\x1a\n", 8) === 0;
+
+            if (!$isPdf && !$isJpeg && !$isPng) {
+                Log::warning('resolveAndStoreProof: Magic bytes tidak sesuai untuk PDF atau JPG/PNG.');
+                return null;
+            }
+
+            $ext = $isPdf ? 'pdf' : ($isPng ? 'png' : 'jpg');
+            $mimeType = $isPdf ? 'application/pdf' : ($isPng ? 'image/png' : 'image/jpeg');
             $filename = "proof_{$safeOrderCode}_" . time() . '.' . $ext;
 
-            try {
-                $file->move($localDir, $filename);
-                $localUrl = asset('uploads/payments/' . $filename);
-            } catch (Throwable $moveEx) {
-                $localUrl = null;
+            // Baca konten binary langsung dari memori/temp file PHP tanpa menyimpannya ke server
+            $rawBytes = file_get_contents($file->getRealPath());
+
+            // Upload LANGSUNG ke Supabase Storage
+            $supabaseUrl = $storage->uploadRaw($rawBytes, $filename, $mimeType, 'payments');
+            if ($supabaseUrl) {
+                return $supabaseUrl;
             }
 
-            // Sinkronkan ke Supabase Storage
-            try {
-                $supabaseUrl = $storage->upload($file, 'payments');
-                if ($supabaseUrl) {
-                    return $supabaseUrl;
-                }
-            } catch (Throwable $e) {
-                Log::warning('Supabase upload failed: ' . $e->getMessage());
-            }
-
-            if ($localUrl) {
-                return $localUrl;
-            }
+            Log::error('resolveAndStoreProof: Gagal mengunggah file bukti ke Supabase Storage.');
+            return null;
         }
 
         if (empty($proofString)) {
@@ -646,26 +893,50 @@ class OrderApiController extends Controller
 
         // 3. Jika berupa Base64 dari aplikasi mobile (data:image/... atau data:application/pdf)
         if (Str::startsWith($proofString, ['data:image/', 'data:application/pdf'])) {
+            // Tolak jika metadata string mengindikasikan SVG atau Video
+            if (Str::startsWith($proofString, ['data:image/svg', 'data:video/'])) {
+                Log::warning('resolveAndStoreProof: Base64 tipe SVG atau Video ditolak.');
+                return null;
+            }
+
             try {
                 [$meta, $data] = explode(',', $proofString, 2);
-                $decoded = base64_decode($data);
+                $decoded = base64_decode($data, true);
 
-                if ($decoded !== false) {
-                    if (Str::startsWith($proofString, 'data:application/pdf')) {
-                        $ext = 'pdf';
-                        $mimeType = 'application/pdf';
-                    } else {
-                        preg_match('/data:image\/([a-zA-Z0-9\+\-]+);base64/', $meta, $matches);
-                        $subType = strtolower($matches[1] ?? 'png');
-                        $ext = ($subType === 'jpeg') ? 'jpg' : $subType;
-                        $mimeType = 'image/' . ($matches[1] ?? 'png');
+                if ($decoded !== false && strlen($decoded) > 0) {
+                    if (strlen($decoded) > $maxSizeBytes) {
+                        Log::warning('resolveAndStoreProof: Base64 decode melebihi 5 MB.');
+                        return null;
                     }
 
-                    $filename = "proof_{$safeOrderCode}_" . time() . '.' . $ext;
-                    file_put_contents($localDir . '/' . $filename, $decoded);
-                    $localUrl = asset('uploads/payments/' . $filename);
+                    $headerSample = substr($decoded, 0, 512);
 
-                    // Sinkronisasi file asli ke Supabase Storage
+                    // Tolak SVG dan XML
+                    if (stripos($headerSample, '<svg') !== false || stripos($headerSample, '<?xml') !== false) {
+                        Log::warning('resolveAndStoreProof: Base64 terdeteksi sebagai SVG/XML.');
+                        return null;
+                    }
+
+                    // Tolak Video MP4
+                    if (strlen($headerSample) >= 8 && substr($headerSample, 4, 4) === 'ftyp') {
+                        Log::warning('resolveAndStoreProof: Base64 terdeteksi sebagai video MP4.');
+                        return null;
+                    }
+
+                    $isPdf = strncmp($headerSample, "%PDF-", 5) === 0;
+                    $isJpeg = strncmp($headerSample, "\xFF\xD8\xFF", 3) === 0;
+                    $isPng = strncmp($headerSample, "\x89PNG\r\n\x1a\n", 8) === 0;
+
+                    if (!$isPdf && !$isJpeg && !$isPng) {
+                        Log::warning('resolveAndStoreProof: Base64 magic bytes bukan JPG, PNG, atau PDF.');
+                        return null;
+                    }
+
+                    $ext = $isPdf ? 'pdf' : ($isPng ? 'png' : 'jpg');
+                    $mimeType = $isPdf ? 'application/pdf' : ($isPng ? 'image/png' : 'image/jpeg');
+                    $filename = "proof_{$safeOrderCode}_" . time() . '.' . $ext;
+
+                    // Upload LANGSUNG ke Supabase Storage (tanpa menyimpan file ke server lokal)
                     $supabaseUrl = $storage->uploadRaw(
                         $decoded,
                         $filename,
@@ -673,17 +944,16 @@ class OrderApiController extends Controller
                         'payments'
                     );
 
-                    return $supabaseUrl ?: $localUrl;
+                    if ($supabaseUrl) {
+                        return $supabaseUrl;
+                    }
+
+                    Log::error('resolveAndStoreProof: Gagal mengunggah base64 bukti ke Supabase Storage.');
+                    return null;
                 }
             } catch (Throwable $e) {
                 Log::warning('Base64 decode failed: ' . $e->getMessage());
             }
-        }
-
-        // 4. Jika nama file sudah ada di folder uploads lokal
-        $cleanBase = basename($proofString);
-        if (file_exists($localDir . '/' . $cleanBase)) {
-            return asset('uploads/payments/' . $cleanBase);
         }
 
         return null;
