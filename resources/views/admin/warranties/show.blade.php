@@ -50,6 +50,58 @@
         </div>
     </div>
 
+    {{-- Progress klaim: stepper status untuk admin --}}
+    @php
+        $claimSteps = [
+            ['label' => 'Klaim Diterima', 'icon' => 'fa-inbox'],
+            ['label' => 'Verifikasi', 'icon' => 'fa-clipboard-check'],
+            ['label' => 'Jadwal Teknisi', 'icon' => 'fa-calendar-check'],
+            ['label' => 'Teknisi OTW', 'icon' => 'fa-truck'],
+            ['label' => 'Perbaikan', 'icon' => 'fa-tools'],
+            ['label' => 'Selesai', 'icon' => 'fa-check'],
+        ];
+        $claimStepIndex = match ($claim->status) {
+            \App\Models\WarrantyClaim::STATUS_DALAM_PENINJAUAN => 0,
+            \App\Models\WarrantyClaim::STATUS_DISETUJUI => 1,
+            \App\Models\WarrantyClaim::STATUS_KUNJUNGAN_DIJADWALKAN => 2,
+            \App\Models\WarrantyClaim::STATUS_TEKNISI_OTW => 3,
+            \App\Models\WarrantyClaim::STATUS_DALAM_PERBAIKAN => 4,
+            \App\Models\WarrantyClaim::STATUS_SELESAI => 5,
+            default => -1,
+        };
+    @endphp
+    <section aria-label="Tahapan klaim garansi" class="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+        <div class="mb-5 flex flex-wrap items-center justify-between gap-2">
+            <div>
+                <h3 class="text-sm font-bold text-gray-800 dark:text-gray-100">Progres Penanganan Klaim</h3>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Pantau tahapan klaim dari penerimaan hingga perbaikan.</p>
+            </div>
+            @if ($claimStepIndex < 0)
+                <span class="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700 dark:bg-red-950/50 dark:text-red-300">Klaim Ditolak</span>
+            @else
+                <span class="rounded-full bg-coffee-50 px-3 py-1 text-xs font-bold text-coffee-700 dark:bg-coffee-900/40 dark:text-coffee-300">Tahap {{ $claimStepIndex + 1 }} dari {{ count($claimSteps) }}</span>
+            @endif
+        </div>
+
+        <ol class="flex items-start" role="list">
+            @foreach ($claimSteps as $index => $step)
+                @php
+                    $done = $claimStepIndex >= $index;
+                    $current = $claimStepIndex === $index;
+                @endphp
+                <li class="relative flex min-w-0 flex-1 flex-col items-center text-center" aria-current="{{ $current ? 'step' : 'false' }}">
+                    @if ($index > 0)
+                        <span aria-hidden="true" class="absolute right-1/2 top-4 h-0.5 w-full {{ $claimStepIndex >= $index ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-gray-700' }}"></span>
+                    @endif
+                    <span class="relative z-10 flex h-8 w-8 items-center justify-center rounded-full border-2 {{ $done ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-gray-300 bg-white text-gray-400 dark:border-gray-600 dark:bg-gray-900' }} {{ $current ? 'ring-4 ring-emerald-100 dark:ring-emerald-900/50' : '' }}">
+                        <i aria-hidden="true" class="fas {{ $done && !$current ? 'fa-check' : $step['icon'] }} text-xs"></i>
+                    </span>
+                    <span class="mt-2 max-w-20 text-[10px] font-semibold leading-tight {{ $done ? 'text-gray-800 dark:text-gray-200' : 'text-gray-400 dark:text-gray-500' }} sm:max-w-none sm:text-xs">{{ $step['label'] }}</span>
+                </li>
+            @endforeach
+        </ol>
+    </section>
+
     {{-- Grid Konten Utama --}}
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {{-- Kolom Kiri: Rincian Klaim, Unit Mesin & BUKTI FOTO / VIDEO KERUSAKAN --}}
@@ -233,10 +285,16 @@
                     </div>
 
                     <div>
-                        <label for="response_notes" class="mb-1 block text-xs font-semibold text-gray-600 dark:text-gray-300">Catatan Tanggapan Verifikasi</label>
+                        <label for="response_notes" id="responseNotesLabel" class="mb-1 block text-xs font-semibold text-gray-600 dark:text-gray-300">Catatan Persetujuan & Jadwal</label>
+                        @error('response_notes')
+                            <p class="mb-1 text-xs font-semibold text-red-600" role="alert">{{ $message }}</p>
+                        @enderror
+                        @error('scheduled_visit_date')
+                            <p class="mb-1 text-xs font-semibold text-red-600" role="alert">{{ $message }}</p>
+                        @enderror
                         <textarea name="response_notes" id="response_notes" rows="3" required
-                                  placeholder="Tuliskan catatan verifikasi bukti atau arahan untuk customer..."
-                                  class="w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-sm outline-none focus:border-coffee-500 focus:ring-2 focus:ring-coffee-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">{{ $claim->response_notes }}</textarea>
+                                  placeholder="Contoh: Bukti valid. Teknisi dijadwalkan berkunjung pada tanggal dan jam yang dipilih."
+                                  class="w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-sm outline-none focus:border-coffee-500 focus:ring-2 focus:ring-coffee-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">{{ old('response_notes', $claim->response_notes) }}</textarea>
                     </div>
 
                     <button type="submit"
@@ -262,6 +320,11 @@
                                 @endforeach
                             </select>
 
+                            <label for="visit_response_notes" class="block text-xs font-semibold text-gray-600 dark:text-gray-300">Catatan untuk customer (opsional)</label>
+                            <textarea name="response_notes" id="visit_response_notes" rows="2" maxlength="1000"
+                                      placeholder="Kosongkan untuk memakai catatan otomatis sesuai tahap."
+                                      class="w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-sm outline-none focus:border-coffee-500 focus:ring-2 focus:ring-coffee-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"></textarea>
+
                             <button type="submit"
                                     class="w-full rounded-xl border border-purple-200 bg-purple-50 px-4 py-2 text-xs font-bold text-purple-700 transition hover:bg-purple-100 dark:border-purple-900/40 dark:bg-purple-950/40 dark:text-purple-300">
                                 Update Status Kunjungan
@@ -283,5 +346,31 @@
             </div>
         </div>
     </div>
+    <script>
+        (() => {
+            const radios = document.querySelectorAll('input[name="action"]');
+            const schedule = document.getElementById('visitSchedulingFields');
+            const label = document.getElementById('responseNotesLabel');
+            const notes = document.getElementById('response_notes');
+            const button = document.querySelector('form[action*="/verifikasi"] button[type="submit"]');
+            const pendingNote = 'Permintaan klaim garansi berhasil diterima dan menunggu verifikasi Tim Engineering.';
+            const previousPendingNote = 'Permintaan klaim garansi Anda berhasil diterima. Tim Engineering Pabrik sedang memeriksa keabsahan bukti foto/video kerusakan yang diunggah.';
+            const update = () => {
+                const rejected = document.querySelector('input[name="action"]:checked')?.value === 'reject';
+                schedule.hidden = rejected;
+                label.textContent = rejected ? 'Alasan Penolakan Klaim' : 'Catatan Persetujuan & Jadwal';
+                if (rejected && [pendingNote, previousPendingNote].includes(notes.value.trim())) {
+                    notes.value = 'Klaim ditolak karena bukti foto/video tidak valid atau tidak cukup untuk memverifikasi kerusakan.';
+                }
+                notes.placeholder = rejected
+                    ? 'Tuliskan alasan penolakan klaim.'
+                    : 'Contoh: Bukti valid. Teknisi dijadwalkan berkunjung pada tanggal dan jam yang dipilih.';
+                button.innerHTML = rejected
+                    ? '<i class="fas fa-paper-plane mr-1.5"></i> Simpan Penolakan Klaim'
+                    : '<i class="fas fa-paper-plane mr-1.5"></i> Simpan Verifikasi & Terbitkan Jadwal';
+            };
+            radios.forEach(radio => radio.addEventListener('change', update));
+            update();
+        })();
+    </script>
 @endsection
-

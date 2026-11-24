@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\MachineApiController;
 use App\Http\Controllers\Api\OrderApiController;
 use App\Http\Controllers\Api\PaymentApiController;
 use App\Http\Controllers\Api\ServiceApiController;
+use App\Http\Controllers\Api\WarrantyClaimApiController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -42,8 +43,10 @@ Route::get('/payments', [PaymentApiController::class, 'index']);
 Route::get('/services/my-machines', [ServiceApiController::class, 'myMachines']);
 Route::get('/services/bookings', [ServiceApiController::class, 'listBookings']);
 Route::post('/services/bookings', [ServiceApiController::class, 'bookingService']);
-Route::get('/services/warranty-claims', [ServiceApiController::class, 'listWarrantyClaims']);
-Route::post('/services/warranty-claims', [ServiceApiController::class, 'submitWarrantyClaim']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/services/warranty-claims', [WarrantyClaimApiController::class, 'index']);
+    Route::post('/services/warranty-claims', [WarrantyClaimApiController::class, 'store']);
+});
 
 // Autentikasi Pengguna & Aktivasi Akun (Rate Limited untuk mencegah brute force)
 Route::middleware('throttle:15,1')->group(function () {

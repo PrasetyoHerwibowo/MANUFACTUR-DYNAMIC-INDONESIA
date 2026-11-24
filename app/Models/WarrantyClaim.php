@@ -64,6 +64,9 @@ class WarrantyClaim extends Model
             if ($claim->user_id) {
                 Cache::forget("api_warranty_claims_user_{$claim->user_id}");
             }
+            if ($claim->customer?->email) {
+                Cache::forget("customer_email_{$claim->customer->email}");
+            }
         });
 
         static::deleted(function (WarrantyClaim $claim) {

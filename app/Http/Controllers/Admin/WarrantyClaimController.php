@@ -24,7 +24,7 @@ class WarrantyClaimController extends Controller
         $claims = WarrantyClaim::query()
             ->with(['customer', 'user', 'order'])
             ->when($request->filled('q'), function ($query) use ($request) {
-                $keyword = '%' . $request->string('q') . '%';
+                $keyword = '%' . $request->string('q')->toString() . '%';
                 $query->where(function ($sub) use ($keyword) {
                     $sub->where('claim_code', 'like', $keyword)
                         ->orWhere('serial_number', 'like', $keyword)
@@ -37,8 +37,8 @@ class WarrantyClaimController extends Controller
                 });
             })
             ->when(array_key_exists($status, WarrantyClaim::statusLabels()), fn ($query) => $query->where('status', $status))
-            ->when($request->filled('dari'), fn ($query) => $query->whereDate('created_at', '>=', $request->date('dari')))
-            ->when($request->filled('sampai'), fn ($query) => $query->whereDate('created_at', '<=', $request->date('sampai')))
+            ->when($request->date('dari'), fn ($query, $date) => $query->where('created_at', '>=', $date->startOfDay()))
+            ->when($request->date('sampai'), fn ($query, $date) => $query->where('created_at', '<', $date->addDay()->startOfDay()))
             ->latest('id')
             ->paginate(15)
             ->withQueryString();
@@ -97,13 +97,26 @@ class WarrantyClaimController extends Controller
     {
         $validated = $request->validate([
             'action' => ['required', 'string', 'in:approve,reject'],
-            'scheduled_visit_date' => ['nullable', 'date'],
+            'scheduled_visit_date' => ['required_if:action,approve', 'nullable', 'date'],
             'scheduled_visit_time' => ['nullable', 'string', 'max:50'],
             'visit_address' => ['nullable', 'string', 'max:500'],
             'technician_name' => ['nullable', 'string', 'max:150'],
             'technician_phone' => ['nullable', 'string', 'max:50'],
             'response_notes' => ['required', 'string', 'max:1000'],
         ]);
+
+        if ($warranty->verification_status !== WarrantyClaim::VERIFIKASI_MENUNGGU) {
+            return back()->with('error', 'Klaim ini sudah diverifikasi dan tidak dapat diverifikasi ulang.');
+        }
+        if ($validated['action'] === 'approve' && $warranty->warranty_status !== 'dalam_garansi') {
+            return back()->with('error', 'Klaim di luar masa garansi tidak dapat disetujui.');
+        }
+        if ($validated['action'] === 'reject' && mb_strlen(trim($validated['response_notes'])) < 5) {
+            return back()->withErrors(['response_notes' => 'Tuliskan alasan penolakan minimal 5 karakter.'])->withInput();
+        }
+        if ($validated['action'] === 'approve' && $request->date('scheduled_visit_date')?->lt(today())) {
+            return back()->withErrors(['scheduled_visit_date' => 'Jadwal kunjungan harus hari ini atau setelahnya.']);
+        }
 
         try {
             DB::beginTransaction();
@@ -112,9 +125,9 @@ class WarrantyClaimController extends Controller
                 $warranty->update([
                     'verification_status' => WarrantyClaim::VERIFIKASI_VALID,
                     'status' => WarrantyClaim::STATUS_KUNJUNGAN_DIJADWALKAN,
-                    'scheduled_visit_date' => $validated['scheduled_visit_date'] ?? now()->addDays(2),
+                    'scheduled_visit_date' => $validated['scheduled_visit_date'] ?? now()->addDays(2)->toDateString(),
                     'scheduled_visit_time' => $validated['scheduled_visit_time'] ?? '10:00 WIB',
-                    'visit_address' => $validated['visit_address'] ?? ($warranty->order?->delivery_address ?? $warranty->customer?->address),
+                    'visit_address' => $validated['visit_address'] ?: ($warranty->order?->delivery_address ?? $warranty->customer?->address),
                     'technician_name' => $validated['technician_name'] ?? 'Tim Teknisi Garansi Pabrik',
                     'technician_phone' => $validated['technician_phone'] ?? '0812-3344-5566',
                     'response_notes' => $validated['response_notes'],
@@ -160,10 +173,28 @@ class WarrantyClaimController extends Controller
         ]);
 
         try {
-            $warranty->update([
+            $stageNotes = [
+                WarrantyClaim::STATUS_DISETUJUI => 'Klaim telah disetujui dan bukti dinyatakan valid.',
+                WarrantyClaim::STATUS_KUNJUNGAN_DIJADWALKAN => 'Kunjungan teknisi telah dijadwalkan.',
+                WarrantyClaim::STATUS_TEKNISI_OTW => 'Teknisi sedang dalam perjalanan menuju lokasi.',
+                WarrantyClaim::STATUS_DALAM_PERBAIKAN => 'Teknisi sedang melakukan perbaikan mesin.',
+                WarrantyClaim::STATUS_SELESAI => 'Perbaikan garansi telah selesai.',
+            ];
+            $transitions = [
+                WarrantyClaim::STATUS_DISETUJUI => [WarrantyClaim::STATUS_KUNJUNGAN_DIJADWALKAN],
+                WarrantyClaim::STATUS_KUNJUNGAN_DIJADWALKAN => [WarrantyClaim::STATUS_TEKNISI_OTW, WarrantyClaim::STATUS_DALAM_PERBAIKAN],
+                WarrantyClaim::STATUS_TEKNISI_OTW => [WarrantyClaim::STATUS_DALAM_PERBAIKAN],
+                WarrantyClaim::STATUS_DALAM_PERBAIKAN => [WarrantyClaim::STATUS_SELESAI],
+            ];
+            if (!in_array($validated['status'], $transitions[$warranty->status] ?? [], true)) {
+                return back()->with('error', 'Perubahan status tidak sesuai alur penanganan klaim.');
+            }
+            $warranty->update(array_filter([
                 'status' => $validated['status'],
-                'response_notes' => $validated['response_notes'] ?? $warranty->response_notes,
-            ]);
+                'response_notes' => filled($validated['response_notes'] ?? null)
+                    ? $validated['response_notes']
+                    : ($stageNotes[$validated['status']] ?? $warranty->response_notes),
+            ]));
 
             Cache::forget('admin_pending_warranties_count');
             Cache::forget('admin_warranties_stats');
@@ -203,4 +234,3 @@ class WarrantyClaimController extends Controller
         }
     }
 }
-
