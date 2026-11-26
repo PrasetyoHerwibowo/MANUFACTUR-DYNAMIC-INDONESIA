@@ -22,7 +22,7 @@
     @endif
 
     <div class="rounded-xl border border-dashed bg-stone-50/70 p-4 dark:bg-gray-900 {{ $hasError ? 'border-red-300 dark:border-red-500/60' : 'border-stone-300 dark:border-gray-600' }}">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
+        <div class="flex flex-col gap-4">
             <div class="h-24 w-32 shrink-0 overflow-hidden rounded-lg border border-stone-200 bg-white dark:border-gray-700 dark:bg-gray-800">
                 <img
                     id="{{ $previewId }}"
@@ -32,7 +32,7 @@
                 >
             </div>
 
-            <div class="flex-1">
+            <div class="w-full min-w-0">
                 <input
                     type="file"
                     name="{{ $name }}"

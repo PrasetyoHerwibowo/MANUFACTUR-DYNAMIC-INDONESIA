@@ -19,7 +19,7 @@
             :value="number_format($stats['menunggu'], 0, ',', '.')"
             icon="fas fa-hourglass-half"
             gradient="stat-card-gradient-2"
-            note="Perlu konfirmasi & teknisi" />
+            note="Perlu konfirmasi" />
 
         <x-admin.stat-card
             label="Confirmed"
@@ -188,10 +188,6 @@
                                                 <i class="fas fa-check-circle"></i> Selesai
                                             </button>
                                         </form>
-                                    @else
-                                        <span class="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                                            <i class="fas fa-check-double"></i> Selesai
-                                        </span>
                                     @endif
 
                                     <a href="{{ route('admin.services.show', $booking) }}"

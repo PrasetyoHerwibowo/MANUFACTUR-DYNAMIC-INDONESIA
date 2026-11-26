@@ -91,8 +91,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Pelanggan terdaftar
         Route::get('pelanggan', [AdminCustomerController::class, 'index'])->name('customers.index');
         Route::get('pelanggan/{customer}', [AdminCustomerController::class, 'show'])->name('customers.show');
-        Route::get('pelanggan/{customer}/ubah', [AdminCustomerController::class, 'edit'])->name('customers.edit');
-        Route::put('pelanggan/{customer}', [AdminCustomerController::class, 'update'])->name('customers.update');
         Route::delete('pelanggan/{customer}', [AdminCustomerController::class, 'destroy'])->name('customers.destroy');
 
         // Layanan Purna Jual: Booking Servis Teknisi

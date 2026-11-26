@@ -5,44 +5,47 @@
 @source '../**/*.blade.php';
 @source '../**/*.js';
 
-/* Mode gelap diaktifkan lewat class .dark pada <html> (tombol tema di panel admin). */
-@custom-variant dark (&:where(.dark, .dark *));
+/* Mode gelap dinonaktifkan sepenuhnya: pastikan varian dark: tidak pernah aktif (termasuk prefers-color-scheme). */
+@custom-variant dark (&:where(.dark-disabled));
+
+/* Mode terang monokrom industrial (selaras dengan MANUFAKTUR-MOBILE & public.css). */
 
 @theme {
-    --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    --font-sans: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 
-    /* Palet warna perusahaan: cokelat kopi / kakao */
-    --color-brand-50: #fdf8f2;
-    --color-brand-100: #f8ecdf;
-    --color-brand-200: #eed7b8;
-    --color-brand-300: #e0bb8c;
-    --color-brand-400: #cf985e;
-    --color-brand-500: #c07f42;
-    --color-brand-600: #a96634;
-    --color-brand-700: #8b502c;
-    --color-brand-800: #71422a;
-    --color-brand-900: #5d3826;
-    --color-brand-950: #321c13;
+    /* Palet warna industrial monochrome (Zinc System - acuan MANUFAKTUR-MOBILE AppColors) */
+    --color-brand-50: #fafafa;
+    --color-brand-100: #f4f4f5;
+    --color-brand-200: #e4e4e7;
+    --color-brand-300: #d4d4d8;
+    --color-brand-400: #a1a1aa;
+    --color-brand-500: #71717a;
+    --color-brand-600: #52525b;
+    --color-brand-700: #27272a;
+    --color-brand-800: #18181b;
+    --color-brand-900: #09090b;
+    --color-brand-950: #000000;
 
-    /* Warna aksen: hijau daun kopi */
-    --color-accent-100: #eef5e7;
-    --color-accent-300: #bfd8a6;
-    --color-accent-500: #6f9c4a;
-    --color-accent-600: #578038;
-    --color-accent-700: #44662c;
+    /* Warna aksen netral */
+    --color-accent-100: #f4f4f5;
+    --color-accent-300: #d4d4d8;
+    --color-accent-500: #71717a;
+    --color-accent-600: #27272a;
+    --color-accent-700: #18181b;
 
-    /* Palet coffee: warna utama tema panel admin */
-    --color-coffee-50: #fdf8f0;
-    --color-coffee-100: #f9edd9;
-    --color-coffee-200: #f2d7b0;
-    --color-coffee-300: #e9bb7e;
-    --color-coffee-400: #e19a4d;
-    --color-coffee-500: #db7f2e;
-    --color-coffee-600: #cd6624;
-    --color-coffee-700: #ab4d1f;
-    --color-coffee-800: #8a3e20;
-    --color-coffee-900: #70351d;
+    /* Palet coffee dipetakan ke industrial zinc/charcoal agar seragam di seluruh panel admin */
+    --color-coffee-50: #fafafa;
+    --color-coffee-100: #f4f4f5;
+    --color-coffee-200: #e4e4e7;
+    --color-coffee-300: #d4d4d8;
+    --color-coffee-400: #a1a1aa;
+    --color-coffee-500: #71717a;
+    --color-coffee-600: #3f3f46;
+    --color-coffee-700: #27272a;
+    --color-coffee-800: #18181b;
+    --color-coffee-900: #09090b;
+    --color-coffee-950: #000000;
 
     /* Animasi */
     --animate-fade-in: fadeIn 0.5s ease-out both;
@@ -82,18 +85,11 @@
 }
 
 @layer components {
-    /* Kartu kaca pada header/sidebar gelap panel admin. */
+    /* Kartu permukaan putih dengan border hairline Zinc 200 (acuan AppColors.cardBg & border). */
     .glass-card {
         background-color: #ffffff;
-        border: 1px solid #e5e7eb;
-        box-shadow: 0 1px 2px rgb(16 24 40 / 0.05);
-    }
-
-    .dark .glass-card {
-        background-color: rgb(17 24 39 / 0.7);
-        border-color: rgb(255 255 255 / 0.05);
-        backdrop-filter: blur(10px);
-        box-shadow: none;
+        border: 1px solid #e4e4e7;
+        box-shadow: 0 1px 2px rgb(9 9 11 / 0.04);
     }
 
     /* Bar progres di kartu statistik dashboard: tumbuh dari kiri saat kartu tampil. */
@@ -103,25 +99,25 @@
         animation: metricGrow 1s ease-out both;
     }
 
-    /* Kartu statistik bergradasi pada dashboard (disamakan dengan tema Eiko Coffee Roaster). */
+    /* Kartu statistik bergradasi monokrom industrial pada dashboard/halaman modul. */
     .stat-card-gradient-1 {
-        background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background-image: linear-gradient(135deg, #09090b 0%, #27272a 100%);
     }
 
     .stat-card-gradient-2 {
-        background-image: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        background-image: linear-gradient(135deg, #18181b 0%, #3f3f46 100%);
     }
 
     .stat-card-gradient-3 {
-        background-image: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        background-image: linear-gradient(135deg, #27272a 0%, #52525b 100%);
     }
 
     .stat-card-gradient-4 {
-        background-image: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        background-image: linear-gradient(135deg, #09090b 0%, #18181b 100%);
     }
 
     .stat-card-gradient-5 {
-        background-image: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        background-image: linear-gradient(135deg, #3f3f46 0%, #18181b 100%);
     }
 
     /* Wadah grafik: kanvas Chart.js memenuhi tinggi wadah yang ditentukan. */
@@ -200,12 +196,8 @@
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
+    background: #d4d4d8;
     border-radius: 3px;
-}
-
-.dark ::-webkit-scrollbar-thumb {
-    background: #475569;
 }
 
 

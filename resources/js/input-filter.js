@@ -120,7 +120,7 @@ function showWarning(field, rule) {
     if (!(warning instanceof HTMLElement)) {
         warning = document.createElement('p');
         warning.dataset.inputFilterWarning = '';
-        warning.className = 'mt-1.5 text-xs font-semibold text-red-600 dark:text-red-400';
+        warning.className = 'mt-1.5 text-xs font-semibold text-red-600';
         warning.setAttribute('role', 'status');
         wrapper.append(warning);
     }

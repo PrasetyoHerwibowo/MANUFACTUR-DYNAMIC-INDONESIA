@@ -33,11 +33,6 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-            <a href="{{ route('admin.customers.edit', $customer) }}"
-               class="rounded-xl border border-coffee-300 px-4 py-2.5 text-sm font-bold text-coffee-700 transition hover:bg-coffee-50 dark:border-coffee-500/40 dark:text-coffee-300 dark:hover:bg-coffee-500/10">
-                <i aria-hidden="true" class="fas fa-pen mr-1"></i> Ubah Data
-            </a>
-
             @if ($stats['pesanan'] === 0)
                 <form method="POST" action="{{ route('admin.customers.destroy', $customer) }}"
                       data-confirm="Hapus pelanggan {{ $customer->name }}?">

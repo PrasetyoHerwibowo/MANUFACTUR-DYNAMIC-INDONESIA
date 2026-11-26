@@ -92,9 +92,9 @@
             </div>
 
             <!-- Content Form -->
-            <div style="margin-top: auto; margin-bottom: auto; width: 100%; max-w: 400px;">
-                <h2 style="font-size: 22px; font-weight: 700; color: #1c1917;">Panel Admin</h2>
-                <p style="font-size: 12px; color: #78716c; margin-top: 2px;">Masuk untuk mengakses sistem.</p>
+            <div style="margin-top: auto; margin-bottom: auto; width: 100%; max-width: 400px;">
+                <h2 style="font-size: 22px; font-weight: 700; color: #09090b;">Panel Admin</h2>
+                <p style="font-size: 12px; color: #71717a; margin-top: 2px;">Masuk untuk mengakses sistem.</p>
 
                 @include('public.partials.flash')
 
@@ -113,51 +113,51 @@
                 
                     <!-- Email -->
                     <div style="margin-bottom: 14px;">
-                        <label for="email" style="display: block; font-size: 12px; font-weight: 600; color: #44403c; margin-bottom: 4px;">Email</label>
+                        <label for="email" style="display: block; font-size: 12px; font-weight: 600; color: #27272a; margin-bottom: 4px;">Email</label>
                         <div style="position: relative;">
-                            <span style="position: absolute; top: 0; bottom: 0; left: 12px; display: flex; align-items: center; pointer-events: none; color: #9ca3af;">
+                            <span style="position: absolute; top: 0; bottom: 0; left: 12px; display: flex; align-items: center; pointer-events: none; color: #71717a;">
                                 <svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                             </span>
                             <input type="email" name="email" id="email" value="{{ old('email') }}" required autofocus
                                 placeholder="admin@example.com"
-                                style="width: 100%; box-sizing: border-box; height: 40px; padding-left: 40px; padding-right: 12px; border-radius: 10px; border: 1px solid #e7e5e4; background-color: #fafaf9; font-size: 13px; outline: none;">
+                                style="width: 100%; box-sizing: border-box; height: 40px; padding-left: 40px; padding-right: 12px; border-radius: 10px; border: 1px solid #e4e4e7; background-color: #fafafa; color: #09090b; font-size: 13px; outline: none;">
                         </div>
                     </div>
 
                     <!-- Password -->
                     <div style="margin-bottom: 14px;">
-                        <label for="password" style="display: block; font-size: 12px; font-weight: 600; color: #44403c; margin-bottom: 4px;">Password</label>
+                        <label for="password" style="display: block; font-size: 12px; font-weight: 600; color: #27272a; margin-bottom: 4px;">Password</label>
                         <div style="position: relative;">
-                            <span style="position: absolute; top: 0; bottom: 0; left: 12px; display: flex; align-items: center; pointer-events: none; color: #9ca3af;">
+                            <span style="position: absolute; top: 0; bottom: 0; left: 12px; display: flex; align-items: center; pointer-events: none; color: #71717a;">
                                 <svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                             </span>
                             <input type="password" name="password" id="password" required
                                 placeholder="••••••••"
-                                style="width: 100%; box-sizing: border-box; height: 40px; padding-left: 40px; padding-right: 12px; border-radius: 10px; border: 1px solid #e7e5e4; background-color: #fafaf9; font-size: 13px; outline: none;">
+                                style="width: 100%; box-sizing: border-box; height: 40px; padding-left: 40px; padding-right: 12px; border-radius: 10px; border: 1px solid #e4e4e7; background-color: #fafafa; color: #09090b; font-size: 13px; outline: none;">
                         </div>
                     </div>
 
                     <!-- Checkbox -->
                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
-                        <input type="checkbox" name="remember" id="remember" value="1" style="width: 16px; height: 16px; cursor: pointer;">
-                        <label for="remember" style="font-size: 12px; color: #57534e; cursor: pointer;">Ingat saya di perangkat ini</label>
+                        <input type="checkbox" name="remember" id="remember" value="1" style="width: 16px; height: 16px; accent-color: #09090b; cursor: pointer;">
+                        <label for="remember" style="font-size: 12px; color: #52525b; cursor: pointer;">Ingat saya di perangkat ini</label>
                     </div>
 
                     <!-- Tombol Submit -->
                     <button type="submit"
-                        style="width: 100%; height: 42px; background-color: #8B4513; color: #ffffff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        style="width: 100%; height: 42px; background-color: #09090b; color: #ffffff; border: none; border-radius: 999px; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
                        <span>Masuk</span> 
                        <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                     </button>
                 </form>
 
-                <p style="margin-top: 16px; text-align: center; font-size: 11px; color: #a8a29e;">
+                <p style="margin-top: 16px; text-align: center; font-size: 11px; color: #71717a;">
                     Hanya administrator yang dapat mengakses panel ini.
                 </p>
             </div>
 
             <!-- Footer -->
-            <div style="text-align: center; font-size: 11px; color: #a8a29e;">
+            <div style="text-align: center; font-size: 11px; color: #71717a;">
                 &copy; {{ now()->year }} {{ $company->name }}
             </div>
 

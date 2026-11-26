@@ -91,13 +91,9 @@
 
                 {{-- Badge Tahap Produksi --}}
                 <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold border
-                    {{ $order->production_status === \App\Models\Order::STAGE_AFTER_SALES 
-                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700' 
-                        : ($order->production_status === \App\Models\Order::STAGE_VERIFIKASI_DP 
-                            ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700' 
-                            : ($order->production_status === \App\Models\Order::STAGE_MENUNGGU_PELUNASAN
-                                ? 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-700'
-                                : 'bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-900/40 dark:text-indigo-300 dark:border-indigo-700')) }}">
+                    {{ $order->production_status === \App\Models\Order::STAGE_AFTER_SALES
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700'
+                        : 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-700' }}">
                     <i class="fas fa-industry text-[11px]"></i> {{ $order->productionStageLabel() }}
                 </span>
 
@@ -191,10 +187,10 @@
     <div class="grid gap-5 lg:grid-cols-3">
         {{-- Kolom kiri: Pelanggan, Alamat & Item --}}
         <div class="space-y-5 lg:col-span-2">
-            {{-- Informasi Pelanggan --}}
+            {{-- Informasi Pelanggan & Alamat Instalasi --}}
             <div class="glass-card rounded-2xl p-5 shadow-lg">
-                <h3 class="mb-3 text-sm font-bold text-gray-800 dark:text-white">
-                    <i aria-hidden="true" class="fas fa-user mr-1.5 text-coffee-500"></i> Informasi Pelanggan
+                <h3 class="mb-4 text-sm font-bold text-gray-800 dark:text-white">
+                    <i aria-hidden="true" class="fas fa-user mr-1.5 text-coffee-500"></i> Informasi Pelanggan & Alamat Instalasi
                 </h3>
 
                 @if ($order->customer)
@@ -207,7 +203,7 @@
                             <p class="font-bold text-gray-800 dark:text-white">{{ $order->customer->name }}</p>
                             <p class="text-xs text-gray-500 dark:text-gray-400">{{ $order->customer->customer_code }} • {{ $order->customer->company ?: 'PT Kopi Nusantara Jaya' }}</p>
 
-                            <dl class="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                            <dl class="mt-3 grid gap-3 text-xs sm:grid-cols-2">
                                 <div>
                                     <dt class="text-gray-400">Email</dt>
                                     <dd class="font-semibold text-gray-700 dark:text-gray-200">{{ $order->customer->email }}</dd>
@@ -222,18 +218,14 @@
                 @else
                     <p class="text-sm text-gray-500 dark:text-gray-400">Data akun pelanggan telah dihapus.</p>
                 @endif
-            </div>
 
-            {{-- Alamat Pengiriman & Catatan Kustomisasi Mesin --}}
-            <div class="glass-card rounded-2xl p-5 shadow-lg">
-                <h3 class="mb-3 text-sm font-bold text-gray-800 dark:text-white">
-                    <i aria-hidden="true" class="fas fa-map-marker-alt mr-1.5 text-coffee-500"></i> Alamat Instalasi & Kustomisasi
-                </h3>
-
-                <div class="space-y-3 text-xs">
+                <div class="mt-4 space-y-3 border-t border-gray-200/70 pt-4 text-xs dark:border-gray-700">
                     <div>
-                        <p class="font-semibold text-gray-400">Alamat Pengiriman & Instalasi Pabrik:</p>
-                        <p class="mt-1 rounded-xl bg-gray-50 p-3 font-medium text-gray-700 dark:bg-gray-800/80 dark:text-gray-200 border border-gray-200/60 dark:border-gray-700">
+                        <p class="font-semibold text-gray-400">
+                            <i aria-hidden="true" class="fas fa-map-marker-alt mr-1 text-coffee-500"></i>
+                            Alamat Pengiriman & Instalasi Pabrik:
+                        </p>
+                        <p class="mt-1.5 rounded-xl border border-gray-200/60 bg-gray-50 p-3 font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800/80 dark:text-gray-200">
                             {{ $order->delivery_address ?: ($order->customer?->fullAddress() ?: 'Kawasan Industri MM2100 Blok C-4, Cikarang Barat, Bekasi') }}
                         </p>
                     </div>
@@ -241,7 +233,7 @@
                     @if ($order->custom_notes)
                         <div>
                             <p class="font-semibold text-gray-400">Catatan Custom / Laser Engraving Logo:</p>
-                            <p class="mt-1 rounded-xl bg-amber-50 p-3 font-semibold text-amber-900 dark:bg-amber-950/40 dark:text-amber-200 border border-amber-200/80 dark:border-amber-800/60">
+                            <p class="mt-1.5 rounded-xl border border-amber-200/80 bg-amber-50 p-3 font-semibold text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200">
                                 <i class="fas fa-pen-nib mr-1 text-amber-600"></i> {{ $order->custom_notes }}
                             </p>
                         </div>
@@ -527,10 +519,10 @@
 
             {{-- 1.5. CARD TAMBAHAN: VERIFIKASI BUKTI TRANSFER PELUNASAN SISA 50% --}}
             @if ($hasPelunasanProof || $isPelunasanRejected || $order->production_status === \App\Models\Order::STAGE_MENUNGGU_PELUNASAN || $order->status === \App\Models\Order::STATUS_LUNAS)
-                <div class="glass-card rounded-2xl p-5 shadow-lg border-2 border-indigo-500/20">
+                <div class="glass-card rounded-2xl p-5 shadow-lg border border-zinc-200">
                     <div class="mb-3 flex items-center justify-between">
-                        <h3 class="text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                            <i aria-hidden="true" class="fas fa-file-invoice-dollar text-indigo-600 dark:text-indigo-400"></i>
+                        <h3 class="text-sm font-bold text-zinc-900 flex items-center gap-2">
+                            <i aria-hidden="true" class="fas fa-file-invoice-dollar text-zinc-900"></i>
                             Bukti Pembayaran Pelunasan (50%)
                         </h3>
                         @if ($hasPelunasanProof)
@@ -571,7 +563,7 @@
                                         <p class="text-[11px] text-gray-500 dark:text-gray-400">Nilai: Rp {{ number_format((float) ($order->pelunasan_amount ?: $order->total_amount * 0.5), 0, ',', '.') }}</p>
                                     </div>
                                     <a href="{{ $pelunasanProofUrl }}" target="_blank"
-                                       class="inline-flex items-center gap-1 rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300">
+                                       class="inline-flex items-center gap-1 rounded-lg bg-zinc-100 px-2.5 py-1 text-xs font-bold text-zinc-800 hover:bg-zinc-200">
                                         <i class="fas fa-external-link-alt text-[10px]"></i> Layar Penuh
                                     </a>
                                 </div>
@@ -580,7 +572,7 @@
 
                         @if ($isPelunasanWaiting || $order->status !== \App\Models\Order::STATUS_LUNAS)
                             <div class="space-y-4">
-                                <div class="rounded-xl bg-indigo-50 p-3 text-xs text-indigo-800 border border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-300 dark:border-indigo-800/50">
+                                <div class="rounded-xl bg-zinc-100 p-3 text-xs text-zinc-800 border border-zinc-200">
                                     <p class="font-bold mb-1"><i class="fas fa-info-circle mr-1"></i> Verifikasi Pelunasan Pabrik</p>
                                     Jika mutasi pelunasan valid, pesanan akan ditandai <strong>LUNAS</strong> dan tahap produksi otomatis dilanjutkan ke <strong>Tahap 6: Pengiriman & Instalasi Teknisi</strong>.
                                 </div>
@@ -593,7 +585,7 @@
                                     <input type="hidden" name="target" value="pelunasan">
 
                                     <button type="submit"
-                                            class="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-indigo-700 flex items-center justify-center gap-2">
+                                            class="w-full rounded-xl bg-zinc-950 px-4 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-zinc-800 flex items-center justify-center gap-2">
                                         <i class="fas fa-shipping-fast"></i> Verifikasi Pelunasan (Lanjut ke Pengiriman & Instalasi)
                                     </button>
                                 </form>

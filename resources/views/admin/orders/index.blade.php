@@ -117,18 +117,28 @@
                             $proof = $order->dp_proof ?: ($payment?->proof ?: null);
 
                             $stageColors = [
-                                \App\Models\Order::STAGE_VERIFIKASI_DP => 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
-                                \App\Models\Order::STAGE_PERSIAPAN_BAHAN => 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300',
-                                \App\Models\Order::STAGE_PROSES_PRODUKSI => 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300',
-                                \App\Models\Order::STAGE_QUALITY_CONTROL => 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
+                                \App\Models\Order::STAGE_VERIFIKASI_DP => 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+                                \App\Models\Order::STAGE_PERSIAPAN_BAHAN => 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+                                \App\Models\Order::STAGE_PROSES_PRODUKSI => 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+                                \App\Models\Order::STAGE_QUALITY_CONTROL => 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
                                 \App\Models\Order::STAGE_MENUNGGU_PELUNASAN => 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
-                                \App\Models\Order::STAGE_PENGIRIMAN_INSTALASI => 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+                                \App\Models\Order::STAGE_PENGIRIMAN_INSTALASI => 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
                                 \App\Models\Order::STAGE_AFTER_SALES => 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
+                            ];
+
+                            $stageShortLabels = [
+                                \App\Models\Order::STAGE_VERIFIKASI_DP => '1. Verifikasi DP',
+                                \App\Models\Order::STAGE_PERSIAPAN_BAHAN => '2. Persiapan Bahan',
+                                \App\Models\Order::STAGE_PROSES_PRODUKSI => '3. Proses Produksi',
+                                \App\Models\Order::STAGE_QUALITY_CONTROL => '4. Quality Control',
+                                \App\Models\Order::STAGE_MENUNGGU_PELUNASAN => '5. Menunggu Pelunasan',
+                                \App\Models\Order::STAGE_PENGIRIMAN_INSTALASI => '6. Pengiriman & Instalasi',
+                                \App\Models\Order::STAGE_AFTER_SALES => '7. After-Sales Service',
                             ];
                         @endphp
 
                         <tr class="align-top transition hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                            <td class="px-5 py-3.5">
+                            <td class="whitespace-nowrap px-5 py-3.5">
                                 @if ($payment)
                                     <span class="font-mono text-xs font-bold text-coffee-700 dark:text-coffee-300">{{ $payment->payment_code }}</span>
 
@@ -140,7 +150,7 @@
                                 @endif
                             </td>
 
-                            <td class="px-5 py-3.5">
+                            <td class="whitespace-nowrap px-5 py-3.5">
                                 <a href="{{ route('admin.orders.show', $order) }}"
                                    class="font-mono text-xs font-bold text-gray-800 transition hover:text-coffee-600 dark:text-gray-100 dark:hover:text-coffee-400">
                                     {{ $order->order_code }}
@@ -173,20 +183,21 @@
                                 @endforelse
                             </td>
 
-                            <td class="px-5 py-3.5 font-semibold text-gray-800 dark:text-gray-100">
+                            <td class="whitespace-nowrap px-5 py-3.5 font-semibold text-gray-800 dark:text-gray-100">
                                 Rp {{ number_format((float) $order->total_amount, 0, ',', '.') }}
                             </td>
 
-                            <td class="px-5 py-3.5">
-                                <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold {{ $stageColors[$order->production_status] ?? 'bg-gray-100 text-gray-700' }}">
-                                    {{ $order->productionStageLabel() }}
+                            <td class="whitespace-nowrap px-5 py-3.5">
+                                <span title="{{ $order->productionStageLabel() }}"
+                                      class="inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold leading-none {{ $stageColors[$order->production_status] ?? 'bg-zinc-100 text-zinc-700' }}">
+                                    {{ $stageShortLabels[$order->production_status] ?? $order->productionStageLabel() }}
                                 </span>
                             </td>
 
-                            <td class="px-5 py-3.5">
+                            <td class="whitespace-nowrap px-5 py-3.5">
                                 @if ($proof)
                                     <a href="{{ route('admin.orders.show', $order) }}"
-                                       class="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                       class="inline-flex items-center gap-1 whitespace-nowrap rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300">
                                         <i class="fas fa-check-circle text-emerald-600"></i> Ada Bukti
                                     </a>
                                     @if ($order->production_status === \App\Models\Order::STAGE_VERIFIKASI_DP)
@@ -211,10 +222,10 @@
                                 @endif
                             </td>
 
-                            <td class="px-5 py-3.5 text-right">
+                            <td class="whitespace-nowrap px-5 py-3.5 text-right">
                                 <a href="{{ route('admin.orders.show', $order) }}"
-                                   class="inline-flex items-center gap-1 rounded-lg bg-coffee-50 px-2.5 py-1 text-xs font-bold text-coffee-700 transition hover:bg-coffee-100 dark:bg-coffee-950/60 dark:text-coffee-300">
-                                    Detail <i class="fas fa-chevron-right text-[10px]"></i>
+                                   class="inline-flex items-center gap-1 whitespace-nowrap rounded-xl bg-coffee-50 px-3 py-1.5 text-xs font-bold text-coffee-700 transition hover:bg-coffee-100 dark:bg-coffee-900/40 dark:text-coffee-300 dark:hover:bg-coffee-900/60">
+                                    <i class="fas fa-eye"></i> Detail
                                 </a>
                             </td>
                         </tr>

@@ -12,14 +12,14 @@
             :value="number_format($stats['total'], 0, ',', '.')"
             icon="fas fa-shield-alt"
             gradient="stat-card-gradient-1"
-            :note="$stats['dijadwalkan'].' kunjungan terjadwal'" />
+            :note="$stats['dijadwalkan'].' terjadwal'" />
 
         <x-admin.stat-card
             label="Menunggu Verifikasi Bukti"
             :value="number_format($stats['menunggu'], 0, ',', '.')"
             icon="fas fa-search-plus"
             gradient="stat-card-gradient-2"
-            note="Perlu cek foto/video" />
+            note="Perlu cek bukti" />
 
         <x-admin.stat-card
             label="Kunjungan Perbaikan"

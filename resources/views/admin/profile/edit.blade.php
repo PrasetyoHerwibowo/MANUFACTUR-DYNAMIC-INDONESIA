@@ -65,8 +65,7 @@
             </div>
 
             <div class="grid gap-5 sm:grid-cols-3">
-                <x-admin.file name="logo" label="Logo perusahaan" :current="$profile->logoUrl()"
-                              hint="PNG transparan disarankan." />
+                <x-admin.file name="logo" label="Logo perusahaan" :current="$profile->logoUrl()" />
                 <x-admin.file name="hero_image" label="Foto banner beranda" :current="$profile->heroUrl()" />
                 <x-admin.file name="about_image" label="Foto tentang kami" :current="$profile->aboutUrl()" />
             </div>
