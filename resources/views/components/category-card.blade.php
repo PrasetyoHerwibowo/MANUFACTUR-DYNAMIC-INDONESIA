@@ -1,19 +1,21 @@
 @props(['category'])
 
 <a href="{{ route('products.index', ['kategori' => $category->slug]) }}"
-   class="group flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-red-300 hover:shadow-xl dark:border-gray-700 dark:bg-gray-800 dark:hover:border-red-700">
-    {{-- Jenis mesin tidak lagi memakai foto, jadi bagian atas kartu memakai
-         panel gradasi berikon agar tetap sejajar dengan kartu model mesin. --}}
-    <div class="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-gradient-to-br from-[#1E293B] via-[#131B26] to-[#0B111A] dark:from-gray-800 dark:via-gray-900 dark:to-red-900">
-        <i aria-hidden="true" class="ti ti-cogs text-5xl text-white/20 transition duration-500 group-hover:scale-110"></i>
+   class="group flex flex-col overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-zinc-900 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900 dark:hover:border-white">
+    <div class="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-950">
+        @if ($category->imageUrl())
+            <img src="{{ $category->imageUrl() }}" alt="{{ $category->name }}" class="h-full w-full object-cover transition duration-500 group-hover:scale-105">
+        @else
+            <i aria-hidden="true" class="fas fa-cogs text-5xl text-white/20 transition duration-500 group-hover:scale-110"></i>
+        @endif
 
-        <span class="absolute right-3 top-3 rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-gray-200 dark:text-gray-300">
+        <span class="absolute right-3 top-3 rounded-full bg-white/20 backdrop-blur-sm px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
             {{ $category->machines_count ?? $category->machines->count() }} model
         </span>
     </div>
 
     <div class="flex flex-1 flex-col p-5">
-        <h3 class="text-lg font-bold leading-snug text-stone-800 transition group-hover:text-red-600 dark:text-white">
+        <h3 class="text-lg font-bold leading-snug text-navy transition group-hover:text-zinc-600 dark:text-white dark:group-hover:text-zinc-300">
             {{ $category->name }}
         </h3>
 
@@ -23,9 +25,9 @@
             </p>
         @endif
 
-        <span class="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-red-600 dark:text-red-400">
+        <span class="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-zinc-900 dark:text-white">
             Lihat model mesin
-            <span aria-hidden="true">&rarr;</span>
+            <i class="fas fa-arrow-right text-xs transition-transform group-hover:translate-x-1"></i>
         </span>
     </div>
 </a>

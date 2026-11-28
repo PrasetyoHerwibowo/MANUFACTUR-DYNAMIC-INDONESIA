@@ -70,10 +70,11 @@ class CategoryController extends Controller
         try {
             $validated['slug'] = Slug::make(Category::class, $validated['name']);
 
-            // Foto jenis mesin sudah dihapus dari form, sehingga kolom "image"
-            // tidak lagi diisi di sini.
-            // Jenis mesin yang ditambahkan admin langsung tampil di website.
-            // Urutan tidak lagi diatur manual: data baru diletakkan paling belakang.
+            if ($request->hasFile('image')) {
+                $uploadedImage = ImageUploader::store($request->file('image'), 'image_mesin');
+                $validated['image'] = $uploadedImage;
+            }
+
             $validated['is_active'] = true;
             $validated['sort_order'] = (int) Category::query()->max('sort_order') + 1;
 
@@ -104,10 +105,15 @@ class CategoryController extends Controller
         try {
             $validated['slug'] = Slug::make(Category::class, $validated['name'], $category->id);
 
-            // Foto jenis mesin sudah dihapus dari form dan dari struktur tabel,
-            // jadi tidak ada berkas foto yang perlu diurus saat menyunting.
-            // Jenis mesin yang disunting admin selalu tampil di website; opsi
-            // urutan dan "tampilkan di website" tidak lagi ditampilkan di form.
+            if ($request->hasFile('image')) {
+                $oldImage = $category->image;
+                $uploadedImage = ImageUploader::store($request->file('image'), 'image_mesin');
+                $validated['image'] = $uploadedImage;
+                if ($oldImage) {
+                    ImageUploader::delete($oldImage);
+                }
+            }
+
             $validated['is_active'] = true;
 
             $category->update($validated);
@@ -128,6 +134,10 @@ class CategoryController extends Controller
     public function destroy(Category $category): RedirectResponse
     {
         try {
+            if ($category->image) {
+                ImageUploader::delete($category->image);
+            }
+
             foreach ($category->machines as $machine) {
                 ImageUploader::delete($machine->main_image);
 
@@ -167,14 +177,29 @@ class CategoryController extends Controller
 
         $name = $request->input('name');
 
-        return $request->validate([
+        $validated = $request->validate([
             'name' => array_merge(
                 ['required', 'string', 'max:100', 'regex:'.self::NAME_PATTERN],
                 $this->uniqueNameRules($category, $name),
             ),
+            'series' => ['nullable', 'string', 'in:coffee,cocoa,both'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:6144'],
             'tagline' => ['nullable', 'string', 'max:50', 'regex:'.self::TAGLINE_PATTERN],
             'description' => ['nullable', 'string', 'max:150', 'regex:'.self::TEXT_PATTERN],
         ], $this->messages());
+
+        if (empty($validated['series'])) {
+            $lower = strtolower($name);
+            if (str_contains($lower, 'kakao') || str_contains($lower, 'cocoa')) {
+                $validated['series'] = 'cocoa';
+            } elseif (str_contains($lower, 'kopi') || str_contains($lower, 'coffee')) {
+                $validated['series'] = 'coffee';
+            } else {
+                $validated['series'] = 'both';
+            }
+        }
+
+        return $validated;
     }
 
     /**
@@ -221,6 +246,10 @@ class CategoryController extends Controller
             'name.max' => 'Nama jenis mesin maksimal 100 karakter.',
             'name.regex' => 'Nama jenis mesin hanya boleh berisi huruf, spasi, tanda hubung (-), dan tanda &.',
             'name.unique' => 'Nama jenis mesin sudah digunakan oleh jenis mesin lain.',
+            'series.in' => 'Pilihan lini seri tidak valid.',
+            'image.image' => 'Foto jenis mesin harus berupa berkas gambar.',
+            'image.mimes' => 'Foto jenis mesin harus berformat JPG, PNG, atau WEBP.',
+            'image.max' => 'Ukuran foto jenis mesin maksimal 6 MB.',
             'tagline.max' => 'Tagline singkat maksimal 50 karakter.',
             'tagline.regex' => 'Tagline singkat hanya boleh berisi huruf dan angka.',
             'description.max' => 'Deskripsi maksimal 150 karakter.',

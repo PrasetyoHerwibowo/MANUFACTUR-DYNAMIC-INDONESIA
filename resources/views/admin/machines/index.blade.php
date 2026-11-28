@@ -51,6 +51,7 @@
                         <th class="px-5 py-3.5">Foto</th>
                         <th class="px-5 py-3.5">Model Mesin</th>
                         <th class="px-5 py-3.5">Jenis Mesin</th>
+                        <th class="px-5 py-3.5">Harga PO</th>
                         <th class="px-5 py-3.5">Fungsi Mesin</th>
                         <th class="px-5 py-3.5 text-right">Aksi</th>
                     </tr>
@@ -71,6 +72,11 @@
                             </td>
 
                             <td class="px-5 py-3 text-stone-600 dark:text-gray-300">{{ $machine->category?->name ?? '—' }}</td>
+
+                            <td class="px-5 py-3 whitespace-nowrap">
+                                <p class="font-bold text-stone-900 dark:text-white">Rp {{ number_format($machine->price ?? 0, 0, ',', '.') }}</p>
+                                <p class="text-xs text-stone-500 dark:text-gray-400">DP 50%: Rp {{ number_format(($machine->price ?? 0) * 0.5, 0, ',', '.') }}</p>
+                            </td>
 
                             <td class="max-w-xs px-5 py-3 text-xs leading-relaxed text-stone-500 dark:text-gray-400">
                                 {{ \Illuminate\Support\Str::limit($machine->function, 90) ?: '—' }}
@@ -102,7 +108,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-5 py-10 text-center text-sm text-stone-500 dark:text-gray-400">
+                            <td colspan="6" class="px-5 py-10 text-center text-sm text-stone-500 dark:text-gray-400">
                                 Belum ada model mesin yang sesuai.
                             </td>
                         </tr>

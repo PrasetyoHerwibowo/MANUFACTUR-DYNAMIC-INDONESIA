@@ -28,6 +28,17 @@ class Customer extends Model
         'last_order_at' => 'datetime',
     ];
 
+    protected static function booted(): void
+    {
+        static::saved(function (Customer $customer) {
+            \Illuminate\Support\Facades\Cache::forget("customer_email_{$customer->email}");
+        });
+
+        static::deleted(function (Customer $customer) {
+            \Illuminate\Support\Facades\Cache::forget("customer_email_{$customer->email}");
+        });
+    }
+
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);

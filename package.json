@@ -4,7 +4,9 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "tunnel": "E:\\laragon\\bin\\ngrok\\ngrok.exe http 8000",
+        "tunnel:laragon": "E:\\laragon\\bin\\ngrok\\ngrok.exe http --host-header=rewrite 80"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",

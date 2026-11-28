@@ -69,9 +69,15 @@ class CompanyProfile extends Model
 
     public function aboutUrl(): string
     {
-        return $this->about_image
-            ? \App\Support\ImageUploader::url($this->about_image)
-            : \App\Support\ImageUploader::placeholder();
+        if ($this->about_image) {
+            return \App\Support\ImageUploader::url($this->about_image);
+        }
+
+        if (file_exists(public_path('images/GambarBG.jpg'))) {
+            return asset('images/GambarBG.jpg');
+        }
+
+        return \App\Support\ImageUploader::placeholder();
     }
 
     /**

@@ -30,6 +30,44 @@ class HomeController extends Controller
                     ->get();
             });
 
+            $cocoaCategories = Cache::remember('home_cocoa_categories', 1800, function () {
+                return Category::query()
+                    ->active()
+                    ->forCocoa()
+                    ->ordered()
+                    ->withCount(['machines' => fn ($q) => $q->where('is_active', true)])
+                    ->get();
+            });
+
+            $coffeeCategories = Cache::remember('home_coffee_categories', 1800, function () {
+                return Category::query()
+                    ->active()
+                    ->forCoffee()
+                    ->ordered()
+                    ->withCount(['machines' => fn ($q) => $q->where('is_active', true)])
+                    ->get();
+            });
+
+            $cocoaMachines = Cache::remember('home_cocoa_machines', 1800, function () {
+                return Machine::query()
+                    ->active()
+                    ->forCocoa()
+                    ->with(['category', 'images'])
+                    ->ordered()
+                    ->take(6)
+                    ->get();
+            });
+
+            $coffeeMachines = Cache::remember('home_coffee_machines', 1800, function () {
+                return Machine::query()
+                    ->active()
+                    ->forCoffee()
+                    ->with(['category', 'images'])
+                    ->ordered()
+                    ->take(6)
+                    ->get();
+            });
+
             $stats = Cache::remember('home_stats', 3600, function () {
                 $row = DB::selectOne("
                     SELECT 
@@ -45,19 +83,48 @@ class HomeController extends Controller
                 ];
             });
 
-            return view('public.home', compact('categories', 'featured', 'stats'));
+            $cocoaCategory = $cocoaCategories->first();
+            $coffeeCategory = $coffeeCategories->first();
+
+            return view('public.home', compact(
+                'categories',
+                'featured',
+                'cocoaCategory',
+                'coffeeCategory',
+                'cocoaCategories',
+                'coffeeCategories',
+                'cocoaMachines',
+                'coffeeMachines',
+                'stats'
+            ));
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('HomeController@index error: ' . $e->getMessage());
 
             $categories = collect();
             $featured = collect();
+            $cocoaCategory = null;
+            $coffeeCategory = null;
+            $cocoaCategories = collect();
+            $coffeeCategories = collect();
+            $cocoaMachines = collect();
+            $coffeeMachines = collect();
             $stats = [
                 'kategori' => 0,
                 'mesin' => 0,
                 'foto' => 0,
             ];
 
-            return view('public.home', compact('categories', 'featured', 'stats'));
+            return view('public.home', compact(
+                'categories',
+                'featured',
+                'cocoaCategory',
+                'coffeeCategory',
+                'cocoaCategories',
+                'coffeeCategories',
+                'cocoaMachines',
+                'coffeeMachines',
+                'stats'
+            ));
         }
     }
 }

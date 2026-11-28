@@ -96,15 +96,16 @@
             <table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
                 <thead class="bg-gray-50 text-left text-xs font-bold uppercase tracking-wide text-gray-500 dark:bg-gray-800 dark:text-gray-400">
                     <tr>
-                        <th class="px-5 py-3.5">Kode Pembayaran</th>
-                        <th class="px-5 py-3.5">Kode Pesanan</th>
+                        <th class="px-5 py-3.5">Kode Bayar</th>
+                        <th class="px-5 py-3.5">Kode PO</th>
                         <th class="px-5 py-3.5">Nama Pelanggan</th>
                         <th class="px-5 py-3.5">Model Mesin</th>
                         <th class="px-5 py-3.5 text-center">Jumlah</th>
-                        <th class="px-5 py-3.5">Total Pembayaran</th>
-                        <th class="hidden px-5 py-3.5 md:table-cell">Metode Pembayaran</th>
-                        <th class="hidden px-5 py-3.5 lg:table-cell">Tanggal</th>
-                        <th class="px-5 py-3.5">Status Pembayaran</th>
+                        <th class="px-5 py-3.5">Total Nilai</th>
+                        <th class="px-5 py-3.5">Tahap Produksi</th>
+                        <th class="px-5 py-3.5">Bukti Transfer</th>
+                        <th class="px-5 py-3.5">Status Bayar</th>
+                        <th class="px-5 py-3.5 text-right">Aksi</th>
                     </tr>
                 </thead>
 
@@ -113,10 +114,31 @@
                         @php
                             $payment = $order->latestPayment;
                             $status = $payment?->status ?? $order->status;
+                            $proof = $order->dp_proof ?: ($payment?->proof ?: null);
+
+                            $stageColors = [
+                                \App\Models\Order::STAGE_VERIFIKASI_DP => 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+                                \App\Models\Order::STAGE_PERSIAPAN_BAHAN => 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+                                \App\Models\Order::STAGE_PROSES_PRODUKSI => 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+                                \App\Models\Order::STAGE_QUALITY_CONTROL => 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+                                \App\Models\Order::STAGE_MENUNGGU_PELUNASAN => 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+                                \App\Models\Order::STAGE_PENGIRIMAN_INSTALASI => 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+                                \App\Models\Order::STAGE_AFTER_SALES => 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
+                            ];
+
+                            $stageShortLabels = [
+                                \App\Models\Order::STAGE_VERIFIKASI_DP => '1. Verifikasi DP',
+                                \App\Models\Order::STAGE_PERSIAPAN_BAHAN => '2. Persiapan Bahan',
+                                \App\Models\Order::STAGE_PROSES_PRODUKSI => '3. Proses Produksi',
+                                \App\Models\Order::STAGE_QUALITY_CONTROL => '4. Quality Control',
+                                \App\Models\Order::STAGE_MENUNGGU_PELUNASAN => '5. Menunggu Pelunasan',
+                                \App\Models\Order::STAGE_PENGIRIMAN_INSTALASI => '6. Pengiriman & Instalasi',
+                                \App\Models\Order::STAGE_AFTER_SALES => '7. After-Sales Service',
+                            ];
                         @endphp
 
                         <tr class="align-top transition hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                            <td class="px-5 py-3.5">
+                            <td class="whitespace-nowrap px-5 py-3.5">
                                 @if ($payment)
                                     <span class="font-mono text-xs font-bold text-coffee-700 dark:text-coffee-300">{{ $payment->payment_code }}</span>
 
@@ -128,7 +150,7 @@
                                 @endif
                             </td>
 
-                            <td class="px-5 py-3.5">
+                            <td class="whitespace-nowrap px-5 py-3.5">
                                 <a href="{{ route('admin.orders.show', $order) }}"
                                    class="font-mono text-xs font-bold text-gray-800 transition hover:text-coffee-600 dark:text-gray-100 dark:hover:text-coffee-400">
                                     {{ $order->order_code }}
@@ -137,7 +159,7 @@
 
                             <td class="px-5 py-3.5">
                                 <p class="font-semibold text-gray-800 dark:text-gray-100">{{ $order->customer?->name ?? 'Pelanggan dihapus' }}</p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ $order->customer?->email }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ $order->customer?->company ?: $order->customer?->email }}</p>
                             </td>
 
                             <td class="px-5 py-3.5">
@@ -161,17 +183,31 @@
                                 @endforelse
                             </td>
 
-                            <td class="px-5 py-3.5 font-semibold text-gray-800 dark:text-gray-100">
+                            <td class="whitespace-nowrap px-5 py-3.5 font-semibold text-gray-800 dark:text-gray-100">
                                 Rp {{ number_format((float) $order->total_amount, 0, ',', '.') }}
                             </td>
 
-                            <td class="hidden px-5 py-3.5 text-gray-600 dark:text-gray-300 md:table-cell">
-                                {{ $payment?->methodLabel() ?? '—' }}
+                            <td class="whitespace-nowrap px-5 py-3.5">
+                                <span title="{{ $order->productionStageLabel() }}"
+                                      class="inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold leading-none {{ $stageColors[$order->production_status] ?? 'bg-zinc-100 text-zinc-700' }}">
+                                    {{ $stageShortLabels[$order->production_status] ?? $order->productionStageLabel() }}
+                                </span>
                             </td>
 
-                            <td class="hidden px-5 py-3.5 text-xs text-gray-500 dark:text-gray-400 lg:table-cell">
-                                {{ $order->created_at->format('d M Y') }}
-                                <span class="block text-[10px] text-gray-400">{{ $order->created_at->format('H:i') }} WIB</span>
+                            <td class="whitespace-nowrap px-5 py-3.5">
+                                @if ($proof)
+                                    <a href="{{ route('admin.orders.show', $order) }}"
+                                       class="inline-flex items-center gap-1 whitespace-nowrap rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                        <i class="fas fa-check-circle text-emerald-600"></i> Ada Bukti
+                                    </a>
+                                    @if ($order->production_status === \App\Models\Order::STAGE_VERIFIKASI_DP)
+                                        <span class="mt-0.5 block text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                                            Perlu Verifikasi
+                                        </span>
+                                    @endif
+                                @else
+                                    <span class="text-xs text-gray-400">—</span>
+                                @endif
                             </td>
 
                             <td class="px-5 py-3.5">
@@ -185,10 +221,17 @@
                                     <span class="mt-1 block text-[10px] text-red-500">{{ $payment->failure_reason }}</span>
                                 @endif
                             </td>
+
+                            <td class="whitespace-nowrap px-5 py-3.5 text-right">
+                                <a href="{{ route('admin.orders.show', $order) }}"
+                                   class="inline-flex items-center gap-1 whitespace-nowrap rounded-xl bg-coffee-50 px-3 py-1.5 text-xs font-bold text-coffee-700 transition hover:bg-coffee-100 dark:bg-coffee-900/40 dark:text-coffee-300 dark:hover:bg-coffee-900/60">
+                                    <i class="fas fa-eye"></i> Detail
+                                </a>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="px-5 py-12 text-center">
+                            <td colspan="10" class="px-5 py-12 text-center">
                                 <i aria-hidden="true" class="fas fa-file-invoice-dollar mb-3 text-4xl text-gray-300 dark:text-gray-600"></i>
                                 <p class="text-sm font-semibold text-gray-600 dark:text-gray-300">Belum ada pesanan & pembayaran yang sesuai.</p>
                                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">

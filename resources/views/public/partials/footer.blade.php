@@ -2,121 +2,104 @@
     $whatsapp = preg_replace('/[^0-9]/', '', (string) $company->whatsapp);
 @endphp
 
-<footer class="mt-24 bg-gray-100 text-slate-600 transition-colors duration-300 dark:bg-[#0B111A] dark:text-gray-300">
-    <div
-        class="mx-auto grid max-w-7xl gap-10 border-t border-gray-200 px-4 py-14 dark:border-slate-800 sm:px-6 lg:grid-cols-4 lg:px-8">
-        <div class="lg:col-span-2">
-            <div class="flex items-center gap-3">
-                @if ($company->logoUrl())
-                    <img src="{{ $company->logoUrl() }}" alt="Logo {{ $company->name }}"
-                        class="h-12 w-12 rounded-xl bg-white p-1 object-contain shadow-sm dark:bg-gray-900">
-                @else
-                    <span
-                        class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-red-700 text-lg font-extrabold text-white shadow-lg shadow-red-900/20">MD</span>
-                @endif
-                <span class="text-lg font-extrabold text-slate-900 dark:text-white">{{ $company->name }}</span>
+<footer class="site-footer">
+    <div class="newsletter-bar">
+        <div class="newsletter-inner">
+            <div>
+                <h3 class="text-white font-bold text-xl sm:text-2xl">Follow the latest news from Manufactur Dynamic</h3>
+                <p class="mt-1 text-sm text-zinc-400">Dapatkan informasi inovasi teknologi permesinan kopi & kakao terbaru.</p>
             </div>
-
-            <p class="mt-5 max-w-md text-sm leading-relaxed text-slate-600 dark:text-gray-400">
-                {{ $company->tagline }}
-            </p>
-
-            @if ($company->about)
-                <p class="mt-4 max-w-md text-sm leading-relaxed text-slate-500 dark:text-gray-400/80">
-                    {{ \Illuminate\Support\Str::limit(strip_tags($company->about), 220) }}
-                </p>
-            @endif
-
-            <div class="mt-6 flex flex-wrap gap-3">
-                @foreach (['facebook' => 'Facebook', 'instagram' => 'Instagram', 'linkedin' => 'LinkedIn', 'youtube' => 'YouTube'] as $key => $label)
-                    @if ($company->{$key})
-                        <a href="{{ $company->{$key} }}" target="_blank" rel="noopener"
-                            class="rounded-lg bg-white px-2 py-1 text-lg font-semibold text-slate-600 shadow-sm transition hover:bg-red-600 hover:text-white dark:bg-slate-800 dark:text-gray-300 dark:hover:bg-red-600 dark:hover:text-white">
-                            <i class="fa-brands fa-{{ $key }}"></i>
-                        </a>
-                    @endif
-                @endforeach
-            </div>
-        </div>
-
-        <div>
-            <h3
-                class="border-l-2 border-red-600 pl-2.5 text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-                Navigasi</h3>
-            <ul class="mt-4 space-y-2.5 text-sm">
-                <li><a href="{{ route('home') }}"
-                        class="transition hover:text-red-600 dark:hover:text-red-400">Beranda</a></li>
-                <li><a href="{{ route('about') }}" class="transition hover:text-red-600 dark:hover:text-red-400">Tentang
-                        Kami</a></li>
-                <li><a href="{{ route('products.index') }}"
-                        class="transition hover:text-red-600 dark:hover:text-red-400">Produk &amp; Mesin</a></li>
-                <li><a href="{{ route('contact') }}"
-                        class="transition hover:text-red-600 dark:hover:text-red-400">Kontak</a></li>
-                <li><a href="{{ auth()->check() ? route('admin.dashboard') : route('admin.login') }}"
-                        class="transition hover:text-red-600 dark:hover:text-red-400">Panel Admin</a></li>
-            </ul>
-        </div>
-
-        <div>
-            <h3
-                class="border-l-2 border-red-600 pl-2.5 text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-                Hubungi Kami</h3>
-            <ul class="mt-4 space-y-3 text-sm">
-                @if ($company->address || $company->city)
-                    <li class="flex gap-2.5">
-                        <span
-                            class="mt-1 flex h-5 w-5 shrink-0 items-center justify-center text-lg text-red-600 dark:text-red-500">
-                            <i class="fa-solid fa-location-dot"></i>
-                        </span>
-                        <span>{{ trim(($company->address ? $company->address . ', ' : '') . ($company->city ?? ''), ', ') }}</span>
-                    </li>
-                @endif
-                @if ($company->phone)
-                    <li class="flex gap-2.5">
-                        <span class="mt-1 flex h-5 w-5 shrink-0 items-center justify-center text-lg text-red-600 dark:text-red-500">
-                            <i class="fa-solid fa-phone"></i>
-                        </span>
-                        <a href="tel:{{ preg_replace('/[^0-9+]/', '', $company->phone) }}"
-                            class="transition hover:text-red-600 dark:hover:text-red-400">{{ $company->phone }}</a>
-                    </li>
-                @endif
-                @if ($whatsapp)
-                    <li class="flex gap-2.5">
-                        <span
-                            class="mt-1 flex h-5 w-5 shrink-0 items-center justify-center text-lg text-red-600 dark:text-red-500">
-                            <i class="fa-brands fa-square-whatsapp"></i>
-                        </span>
-                        <a href="https://wa.me/{{ $whatsapp }}" target="_blank" rel="noopener"
-                            class="transition hover:text-red-600 dark:hover:text-red-400">WhatsApp</a>
-                    </li>
-                @endif
-                @if ($company->email)
-                    <li class="flex gap-2.5">
-                        <span
-                            class="mt-1 flex h-5 w-5 shrink-0 items-center justify-center text-lg text-red-600 dark:text-red-500">
-                            <i class="fa-solid fa-envelope"></i>
-                        </span>
-                        <a href="mailto:{{ $company->email }}"
-                            class="transition hover:text-red-600 dark:hover:text-red-400">{{ $company->email }}</a>
-                    </li>
-                @endif
-                @if ($company->website)
-                    <li class="flex gap-2.5">
-                        <span
-                            class="mt-1 flex h-5 w-5 shrink-0 items-center justify-center text-lg text-red-600 dark:text-red-500">
-                           <i class="fa-solid fa-globe"></i>
-                        </span>
-                        <a href="{{ $company->website }}" target="_blank" rel="noopener"
-                            class="transition hover:text-red-600 dark:hover:text-red-400">{{ $company->website }}</a>
-                    </li>
-                @endif
-            </ul>
+            <form class="newsletter-form" onsubmit="event.preventDefault(); alert('Terima kasih telah berlangganan newsletter Manufactur Dynamic!'); this.reset();">
+                <input type="email" placeholder="Your Email" required>
+                <button type="submit">Subscribe</button>
+            </form>
         </div>
     </div>
 
-    <div class="border-t border-gray-200 py-5 dark:border-slate-800">
-        <p class="text-center text-xs text-slate-500 dark:text-gray-500">
-            &copy; {{ now()->year }} {{ $company->name }}. Seluruh hak cipta dilindungi.
-        </p>
+    <div class="footer-main">
+        <div class="footer-inner">
+            <div class="footer-brand">
+                <a href="{{ route('home') }}" class="nav-logo">
+                    <div class="nav-logo-icon">
+                        <img src="{{ asset('images/logo_eiko_white.png') }}" alt="Logo {{ $company->name }}" class="nav-logo-img">
+                    </div>
+                    <div class="nav-logo-text text-white">
+                        Manufactur<span class="text-zinc-400">_Dynamic</span>
+                    </div>
+                </a>
+                <p class="mt-4">
+                    {{ $company->about ? \Illuminate\Support\Str::limit(strip_tags($company->about), 180) : 'Mitra manufaktur terpercaya yang berkomitmen memberikan solusi produksi berkualitas tinggi dengan teknologi modern dan tenaga ahli berpengalaman.' }}
+                </p>
+
+                @if ($company->address || $company->city)
+                    <p class="mt-3 text-xs text-slate-300/80 flex items-start gap-2">
+                        <i class="fas fa-location-dot mt-1 text-zinc-400"></i>
+                        <span>{{ trim(($company->address ? $company->address . ', ' : '') . ($company->city ?? ''), ', ') }}</span>
+                    </p>
+                @endif
+            </div>
+
+            <div class="footer-col">
+                <h4>Company</h4>
+                <ul>
+                    <li><a href="{{ route('about') }}">Company Overview</a></li>
+                    <li><a href="{{ route('about') }}#vision">Our Vision &amp; Mission</a></li>
+                    <li><a href="{{ route('about') }}#values">Core Values</a></li>
+                    <li><a href="{{ route('about') }}#journey">Company Journey</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-col">
+                <h4>Products</h4>
+                <ul>
+                    <li><a href="{{ route('products.cocoa') }}">Mesin Kakao (MD-Cocoa)</a></li>
+                    <li><a href="{{ route('products.coffee') }}">Mesin Kopi (MD-Coffee)</a></li>
+                    <li><a href="{{ route('products.index') }}">Semua Model Mesin</a></li>
+                    <li><a href="{{ route('contact') }}">Custom Manufacturing</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-col">
+                <h4>Connect</h4>
+                <ul>
+                    <li><a href="{{ route('about') }}#sustainability">Sustainability</a></li>
+                    <li><a href="{{ route('contact') }}">Contact Us</a></li>
+                    @if ($whatsapp)
+                        <li><a href="https://wa.me/{{ $whatsapp }}" target="_blank" rel="noopener">WhatsApp Sales</a></li>
+                    @endif
+                    <li><a href="{{ auth()->check() ? route('admin.dashboard') : route('admin.login') }}">Panel Admin</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-bottom">
+        <p>&copy; {{ now()->year }} {{ $company->name }}. All rights reserved.</p>
+
+        <div class="footer-bottom-right">
+            <div class="lang-switch">
+                <a href="#" class="active">IND</a> | <a href="#">EN</a>
+            </div>
+
+            <div class="footer-bottom-social">
+                @if ($company->facebook)
+                    <a href="{{ $company->facebook }}" target="_blank" rel="noopener" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                @endif
+                @if ($company->instagram)
+                    <a href="{{ $company->instagram }}" target="_blank" rel="noopener" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                @endif
+                @if ($company->linkedin)
+                    <a href="{{ $company->linkedin }}" target="_blank" rel="noopener" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+                @endif
+                @if ($company->youtube)
+                    <a href="{{ $company->youtube }}" target="_blank" rel="noopener" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
+                @endif
+                @if (!$company->facebook && !$company->instagram && !$company->linkedin && !$company->youtube)
+                    <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                    <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+                @endif
+            </div>
+        </div>
     </div>
 </footer>

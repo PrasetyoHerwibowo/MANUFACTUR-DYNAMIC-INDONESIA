@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\Payment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,7 +19,20 @@ class PaymentApiController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-            $payments = Payment::with(['order.items', 'order.customer'])
+            $user = $request->user();
+            $customer = Customer::where('email', $user?->email)->first();
+
+            if (! $customer) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [],
+                ]);
+            }
+
+            $payments = Payment::whereHas('order', function ($q) use ($customer) {
+                    $q->where('customer_id', $customer->id);
+                })
+                ->with(['order.items', 'order.customer'])
                 ->latest('id')
                 ->get()
                 ->map(function ($p) {

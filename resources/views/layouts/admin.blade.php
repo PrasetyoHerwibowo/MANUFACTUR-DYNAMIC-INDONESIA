@@ -22,6 +22,13 @@
             ],
         ],
         [
+            'group' => 'Layanan Purna Jual',
+            'items' => [
+                ['route' => 'admin.services.index', 'icon' => 'fas fa-wrench', 'label' => 'Booking Servis', 'match' => 'admin.services.*', 'badge' => 'services'],
+                ['route' => 'admin.warranties.index', 'icon' => 'fas fa-shield-alt', 'label' => 'Klaim Garansi', 'match' => 'admin.warranties.*', 'badge' => 'warranties'],
+            ],
+        ],
+        [
             'group' => 'Website',
             'items' => [
                 ['route' => 'admin.profile.edit', 'icon' => 'fas fa-building', 'label' => 'Profil Perusahaan', 'match' => 'admin.profile.*'],
@@ -37,10 +44,14 @@
 
     $currentUser = auth()->user();
     $pendingPayments = \Illuminate\Support\Facades\Cache::remember('admin_pending_payments_count', 60, fn () => \App\Models\Payment::query()->pending()->count());
+    $pendingServices = \Illuminate\Support\Facades\Cache::remember('admin_pending_services_count', 60, fn () => \App\Models\ServiceBooking::whereIn('status', [\App\Models\ServiceBooking::STATUS_PENDING, \App\Models\ServiceBooking::STATUS_MENUNGGU])->count());
+    $pendingWarranties = \Illuminate\Support\Facades\Cache::remember('admin_pending_warranties_count', 60, fn () => \App\Models\WarrantyClaim::where('status', \App\Models\WarrantyClaim::STATUS_DALAM_PENINJAUAN)->count());
 
     /** Jumlah notifikasi pada sebuah item menu. */
     $badgeCount = fn (array $item): int => match ($item['badge'] ?? null) {
         'payments' => $pendingPayments,
+        'services' => $pendingServices,
+        'warranties' => $pendingWarranties,
         default => 0,
     };
 @endphp
@@ -62,39 +73,31 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-    {{-- Terapkan tema tersimpan sebelum halaman digambar agar tidak berkedip. --}}
-    <script>
-        if (localStorage.getItem('theme') === 'dark') {
-            document.documentElement.classList.add('dark');
-        }
-    </script>
-
     @stack('head')
     @stack('styles')
 </head>
-<body class="bg-gray-50 font-sans transition-colors duration-300 dark:bg-gray-900">
+<body class="bg-zinc-50 font-sans text-zinc-950">
 <div class="flex min-h-screen">
     {{-- Latar gelap saat sidebar dibuka pada layar kecil --}}
-    <div data-sidebar-backdrop class="fixed inset-0 z-40 bg-gray-900/50 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
-    <aside id="adminSidebar" data-sidebar class="fixed inset-y-0 left-0 z-50 flex w-64 flex-col overflow-y-auto border-r border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
-        <div class="border-b border-gray-200 p-5 dark:border-gray-700">
+    <div data-sidebar-backdrop class="fixed inset-0 z-40 bg-zinc-950/50 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+    <aside id="adminSidebar" data-sidebar class="fixed inset-y-0 left-0 z-50 flex w-64 flex-col overflow-y-auto border-r border-zinc-200 bg-white">
+        <div class="border-b border-zinc-200 p-5">
             <div class="flex w-full items-center justify-center py-2">
                 @if ($company->logoUrl())
-                    <div class="flex h-16 w-32 items-center justify-center overflow-hidden rounded-xl bg-white p-1 shadow-lg">
+                    <div class="flex h-16 w-36 items-center justify-center overflow-hidden rounded-xl border border-zinc-200 bg-white p-1 shadow-sm">
                         <img src="{{ $company->logoUrl() }}" alt="{{ $company->name }}" class="h-full w-full object-contain">
                     </div>
                 @else
-                    <div class="flex h-16 w-32 items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-coffee-500 to-coffee-700 shadow-lg">
-                        <i aria-hidden="true" class="fas fa-industry text-xl text-white"></i>
-                        <span class="text-xs font-extrabold uppercase tracking-wide text-white">Panel Admin</span>
+                    <div class="flex h-16 w-36 items-center justify-center rounded-xl border border-zinc-800 bg-gradient-to-br from-zinc-900 to-zinc-950 p-2.5 shadow-md">
+                        <img src="{{ asset('images/logo_eiko.png') }}" alt="{{ $company->name }}" class="h-10 w-auto max-w-full object-contain brightness-0 invert" style="filter: brightness(0) invert(1);">
                     </div>
                 @endif
             </div>
 
-            <p class="mt-2 truncate text-center text-[11px] font-semibold text-gray-400">{{ Str::limit($company->name, 28) }}</p>
+            <p class="mt-2 truncate text-center text-[11px] font-semibold text-zinc-500">{{ Str::limit($company->name, 28) }}</p>
 
             <button type="button" data-sidebar-close
-                    class="absolute right-3 top-3 rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-white lg:hidden"
+                    class="absolute right-3 top-3 rounded-lg p-1.5 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-900 lg:hidden"
                     aria-label="Tutup menu navigasi">
                 <i aria-hidden="true" class="fas fa-times text-base"></i>
             </button>
@@ -102,7 +105,7 @@
 
         <nav class="flex-1 space-y-1 p-3">
             @foreach ($navigation as $group)
-                <p class="px-3 pb-2 pt-3 text-xs font-semibold uppercase tracking-wider text-gray-400">{{ $group['group'] }}</p>
+                <p class="px-3 pb-2 pt-3 text-xs font-semibold uppercase tracking-wider text-zinc-400">{{ $group['group'] }}</p>
 
                 @foreach ($group['items'] as $item)
                     @php
@@ -110,31 +113,31 @@
                         $notifikasi = $badgeCount($item);
                     @endphp
                     <a href="{{ route($item['route']) }}"
-                       class="nav-item flex w-full items-center gap-3 rounded-lg border-l-4 px-3 py-2.5 text-sm font-medium transition-all {{ $active ? 'border-coffee-500 bg-coffee-50 text-coffee-700 dark:bg-coffee-900/20 dark:text-coffee-400' : 'border-transparent text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700/50' }}">
-                        <i aria-hidden="true" class="{{ $item['icon'] }} w-5 {{ $active ? 'text-coffee-600' : 'text-coffee-500' }}"></i>
+                       class="nav-item flex w-full items-center gap-3 rounded-lg border-l-4 px-3 py-2.5 text-sm font-medium transition-all {{ $active ? 'border-zinc-950 bg-zinc-100 font-semibold text-zinc-950' : 'border-transparent text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950' }}">
+                        <i aria-hidden="true" class="{{ $item['icon'] }} w-5 {{ $active ? 'text-zinc-950' : 'text-zinc-500' }}"></i>
                         <span>{{ $item['label'] }}</span>
 
                         @if ($notifikasi > 0)
-                            <span class="ml-auto rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">{{ $notifikasi }}</span>
+                            <span class="ml-auto rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white">{{ $notifikasi }}</span>
                         @endif
                     </a>
                 @endforeach
             @endforeach
         </nav>
 
-        <div class="border-t border-gray-200 p-3 dark:border-gray-700">
-            <div class="mb-3 flex items-center gap-3 rounded-lg bg-gradient-to-r from-coffee-50 to-orange-50 p-2.5 dark:from-gray-700 dark:to-gray-600">
+        <div class="border-t border-zinc-200 p-3">
+            <div class="mb-3 flex items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-100 p-2.5">
                 <img src="{{ $currentUser->avatarUrl() }}" alt="{{ $currentUser->name }}"
-                     class="h-9 w-9 shrink-0 rounded-full object-cover ring-2 ring-white/70 dark:ring-gray-700">
+                     class="h-9 w-9 shrink-0 rounded-full object-cover ring-2 ring-white">
                 <div class="min-w-0 flex-1">
-                    <p class="truncate text-xs font-semibold text-gray-900 dark:text-white">{{ $currentUser->name }}</p>
-                    <p class="truncate text-[10px] text-gray-500 dark:text-gray-400">{{ $currentUser->email }}</p>
+                    <p class="truncate text-xs font-semibold text-zinc-950">{{ $currentUser->name }}</p>
+                    <p class="truncate text-[10px] text-zinc-500">{{ $currentUser->email }}</p>
                 </div>
-                <span class="h-2 w-2 shrink-0 rounded-full bg-green-500" title="Sesi aktif"></span>
+                <span class="h-2 w-2 shrink-0 rounded-full bg-emerald-600" title="Sesi aktif"></span>
             </div>
 
             <a href="{{ route('admin.account.edit') }}"
-               class="flex w-full items-center justify-center gap-2 rounded-lg bg-coffee-50 px-3 py-2 text-xs font-medium text-coffee-700 transition-all hover:bg-coffee-100 dark:bg-coffee-900/20 dark:text-coffee-400 dark:hover:bg-coffee-900/30">
+               class="flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-100 px-3 py-2 text-xs font-medium text-zinc-800 transition-all hover:bg-zinc-200">
                 <i aria-hidden="true" class="fas fa-user-cog"></i>
                 <span>Edit Profil</span>
             </a>
@@ -142,52 +145,42 @@
             <form method="POST" action="{{ route('admin.logout') }}" class="mt-2">
                 @csrf
                 <button type="submit"
-                        class="flex w-full items-center justify-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600 transition-all hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30">
+                        class="flex w-full items-center justify-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600 transition-all hover:bg-red-100">
                     <i aria-hidden="true" class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
                 </button>
             </form>
 
             <a href="{{ route('home') }}" target="_blank" rel="noopener"
-               class="mt-2 flex items-center justify-center gap-2 text-[10px] font-semibold text-gray-400 transition hover:text-coffee-600 dark:hover:text-coffee-400">
+               class="mt-2 flex items-center justify-center gap-2 text-[10px] font-semibold text-zinc-500 transition hover:text-zinc-950">
                 <i aria-hidden="true" class="fas fa-external-link-alt"></i> Lihat website
             </a>
         </div>
     </aside>
     <main class="flex-1 lg:ml-64">
-        <header class="sticky top-0 z-30 border-b border-gray-200 bg-white/80 px-4 py-4 backdrop-blur-lg dark:border-gray-700 dark:bg-gray-800/80 sm:px-6">
+        <header class="sticky top-0 z-30 border-b border-zinc-200 bg-white/90 px-4 py-4 backdrop-blur-lg sm:px-6">
             <div class="flex items-center justify-between gap-3">
                 <div class="flex min-w-0 items-center gap-3">
                     <button type="button" data-sidebar-open
-                            class="rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 lg:hidden"
+                            class="rounded-lg p-2 text-zinc-600 transition hover:bg-zinc-100 lg:hidden"
                             aria-label="Buka menu navigasi" aria-controls="adminSidebar" aria-expanded="false">
                         <i class="fas fa-bars text-lg" aria-hidden="true"></i>
                     </button>
 
                     <div class="min-w-0">
-                        <h1 class="truncate bg-gradient-to-r from-coffee-600 to-orange-600 bg-clip-text text-xl font-bold text-transparent sm:text-2xl">
+                        <h1 class="truncate text-xl font-bold tracking-tight text-zinc-950 sm:text-2xl">
                             @yield('page_title', 'Dashboard')
                         </h1>
-                        <p class="truncate text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
+                        <p class="truncate text-xs text-zinc-500 sm:text-sm">
                             @yield('page_subtitle', 'Kelola konten website perusahaan')
                         </p>
                     </div>
                 </div>
 
                 <div class="flex shrink-0 items-center gap-2 sm:gap-3">
-                    <button type="button" data-theme-toggle onclick="toggleAdminTheme()"
-                            class="relative h-6 w-12 rounded-full bg-gray-200 transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-coffee-500 dark:bg-gray-700"
-                            title="Ganti tema terang / gelap" aria-label="Ganti tema terang / gelap" aria-pressed="false">
-                        <span data-theme-knob
-                              class="absolute left-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-md transition-transform duration-300 dark:translate-x-6 dark:bg-gray-200">
-                            <i data-theme-icon class="fas fa-moon text-[10px] text-gray-600 dark:hidden" aria-hidden="true"></i>
-                            <i class="fas fa-sun hidden text-[10px] text-yellow-500 dark:inline" aria-hidden="true"></i>
-                        </span>
-                    </button>
-
                     <a href="{{ route('admin.account.edit') }}" title="{{ $currentUser->name }}">
                         <img src="{{ $currentUser->avatarUrl() }}" alt="{{ $currentUser->name }}"
-                             class="h-9 w-9 rounded-full object-cover ring-2 ring-coffee-500/30">
+                             class="h-9 w-9 rounded-full object-cover ring-2 ring-zinc-200">
                     </a>
                 </div>
             </div>
@@ -208,7 +201,7 @@
 
             @yield('content')
         </div>
-        <footer class="border-t border-gray-200 px-6 py-4 text-center text-xs text-gray-400 dark:border-gray-700 dark:text-gray-500">
+        <footer class="border-t border-zinc-200 px-6 py-4 text-center text-xs text-zinc-500">
             &copy; {{ now()->year }} {{ $company->name }} &middot; Panel Admin
         </footer>
     </main>
@@ -264,33 +257,6 @@
 
         desktop.addEventListener('change', syncSidebar);
         syncSidebar();
-
-        const toggle = document.querySelector('[data-theme-toggle]');
-
-        function paintTheme() {
-            const isDark = document.documentElement.classList.contains('dark');
-
-            if (toggle) {
-                toggle.setAttribute('aria-pressed', isDark ? 'true' : 'false');
-                toggle.setAttribute('title', isDark ? 'Aktifkan tema terang' : 'Aktifkan tema gelap');
-            }
-
-            if (typeof window.onAdminThemeChange === 'function') {
-                window.onAdminThemeChange(isDark);
-            }
-        }
-
-        // Dipakai tombol tema (onclick="toggleAdminTheme()") — penanda geser & ikon
-        // bulan/matahari diatur lewat kelas dark: Tailwind, seperti panel Eiko.
-        window.toggleAdminTheme = function () {
-            const isDark = document.documentElement.classList.toggle('dark');
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            paintTheme();
-
-            return isDark;
-        };
-
-        paintTheme();
     })();
 </script>
 

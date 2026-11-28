@@ -18,21 +18,21 @@
             label="Pelanggan Baru"
             :value="number_format($stats['baru'], 0, ',', '.')"
             icon="fas fa-user-plus"
-            gradient="stat-card-gradient-3"
+            gradient="stat-card-gradient-2"
             note="Bulan ini" />
 
         <x-admin.stat-card
             label="Pelanggan Berpesanan"
             :value="number_format($stats['berpesanan'], 0, ',', '.')"
             icon="fas fa-user-check"
-            gradient="stat-card-gradient-2"
-            note="Pernah membuat pesanan" />
+            gradient="stat-card-gradient-4"
+            note="Pernah memesan" />
 
         <x-admin.stat-card
             label="Nilai Pembayaran Lunas"
             :value="'Rp '.number_format($stats['nilai_lunas'], 0, ',', '.')"
             icon="fas fa-hand-holding-usd"
-            gradient="stat-card-gradient-4"
+            gradient="stat-card-gradient-5"
             note="Seluruh pelanggan" />
     </div>
 
@@ -124,13 +124,8 @@
                             <td class="px-5 py-3.5">
                                 <div class="flex flex-wrap items-center justify-end gap-2">
                                     <a href="{{ route('admin.customers.show', $customer) }}"
-                                       class="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800">
+                                       class="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-bold text-zinc-700 transition hover:bg-zinc-100">
                                         Detail
-                                    </a>
-
-                                    <a href="{{ route('admin.customers.edit', $customer) }}"
-                                       class="rounded-lg border border-coffee-300 px-3 py-1.5 text-xs font-bold text-coffee-700 transition hover:bg-coffee-50 dark:border-coffee-500/40 dark:text-coffee-300 dark:hover:bg-coffee-500/10">
-                                        Ubah
                                     </a>
 
                                     @if ($customer->orders_count === 0)

@@ -8,34 +8,34 @@
     $badges = [
         'menunggu_pembayaran' => [
             'text' => 'Menunggu Pembayaran',
-            'class' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-300',
+            'class' => 'bg-amber-100 text-amber-800',
             'icon' => 'fas fa-hourglass-half',
         ],
         'lunas' => [
             'text' => 'Lunas',
-            'class' => 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300',
+            'class' => 'bg-emerald-100 text-emerald-800',
             'icon' => 'fas fa-check-circle',
         ],
         'gagal' => [
             'text' => 'Gagal',
-            'class' => 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300',
+            'class' => 'bg-red-100 text-red-800',
             'icon' => 'fas fa-times-circle',
         ],
         'dibatalkan' => [
             'text' => 'Dibatalkan',
-            'class' => 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+            'class' => 'bg-zinc-200 text-zinc-700',
             'icon' => 'fas fa-ban',
         ],
     ];
 
     $badge = $badges[$status] ?? [
         'text' => ucfirst(str_replace('_', ' ', (string) $status)),
-        'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+        'class' => 'bg-zinc-100 text-zinc-700',
         'icon' => 'fas fa-circle',
     ];
 @endphp
 
-<span {{ $attributes->merge(['class' => 'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold '.$badge['class']]) }}>
+<span {{ $attributes->merge(['class' => 'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold leading-none '.$badge['class']]) }}>
     <i aria-hidden="true" class="{{ $badge['icon'] }} text-[10px]"></i>
     {{ $label ?? $badge['text'] }}
 </span>

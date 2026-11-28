@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'api.customer' => \App\Http\Middleware\EnsureApiIsCustomer::class,
         ]);
 
         // Tamu yang mencoba masuk halaman terproteksi diarahkan ke login admin.

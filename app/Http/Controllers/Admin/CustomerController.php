@@ -3,12 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\StoreCustomerRequest;
-use App\Http\Requests\Admin\UpdateCustomerRequest;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Payment;
-use App\Support\Reference;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -101,32 +98,6 @@ class CustomerController extends Controller
             $stats = ['pesanan' => 0, 'menunggu' => 0, 'lunas' => 0, 'gagal' => 0, 'nilai_lunas' => 0];
 
             return view('admin.customers.show', compact('customer', 'orders', 'stats'))->with('error', 'Gagal memuat data detail pesanan pelanggan.');
-        }
-    }
-
-    public function edit(Customer $customer): View
-    {
-        return view('admin.customers.form', compact('customer'));
-    }
-
-
-    /**
-     * Perbarui data pelanggan.
-     */
-    public function update(UpdateCustomerRequest $request, Customer $customer): RedirectResponse
-    {
-        try {
-            $customer->update($request->validated());
-
-            return redirect()
-                ->route('admin.customers.show', $customer)
-                ->with('success', 'Data pelanggan '.$customer->name.' berhasil diperbarui.');
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('CustomerController@update error: ' . $e->getMessage());
-
-            return back()
-                ->withInput()
-                ->with('error', 'Gagal memperbarui data pelanggan: '.$e->getMessage());
         }
     }
 

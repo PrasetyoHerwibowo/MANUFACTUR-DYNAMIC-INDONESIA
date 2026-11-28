@@ -15,15 +15,15 @@ class SupabaseStorageService
     private string $bucket;
 
     /**
-     * Tipe MIME gambar yang diizinkan dan ekstensi amannya.
+     * Tipe MIME berkas yang diizinkan dan ekstensi amannya (SVG ditiadakan demi keamanan).
      */
     private const ALLOWED_MIME_TYPES = [
         'image/jpeg' => 'jpg',
         'image/pjpeg' => 'jpg',
         'image/png' => 'png',
         'image/webp' => 'webp',
-        'image/gif' => 'gif',
-        'image/svg+xml' => 'svg',
+        'application/pdf' => 'pdf',
+        'video/mp4' => 'mp4',
     ];
 
     public function __construct()
@@ -105,6 +105,53 @@ class SupabaseStorageService
         } catch (Exception $e) {
             Log::error('SupabaseStorageService Exception: ' . $e->getMessage(), [
                 'file' => $file->getClientOriginalName(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Upload berkas binary/string ke Supabase Storage dan kembalikan Public URL.
+     */
+    public function uploadRaw(string $binaryContent, string $filename, string $mime = 'image/png', string $folder = 'payments'): ?string
+    {
+        if (empty($binaryContent) || ! $this->isConfigured()) {
+            return null;
+        }
+
+        $extension = self::ALLOWED_MIME_TYPES[$mime] ?? 'png';
+        $safeName = Str::slug(pathinfo($filename, PATHINFO_FILENAME));
+        $safeName = Str::limit($safeName ?: 'proof', 40, '');
+        $savedFilename = $safeName . '-' . Str::lower(Str::random(12)) . '.' . $extension;
+
+        $cleanFolder = trim(preg_replace('/[^a-zA-Z0-9_\-\/]/', '', $folder), '/');
+        $path = $cleanFolder !== '' ? "{$cleanFolder}/{$savedFilename}" : $savedFilename;
+
+        try {
+            $endpoint = "{$this->url}/storage/v1/object/{$this->bucket}/{$path}";
+
+            $response = Http::withHeaders([
+                'apikey' => $this->key,
+                'Authorization' => "Bearer {$this->key}",
+                'Content-Type' => $mime,
+            ])
+            ->timeout(20)
+            ->withBody($binaryContent, $mime)
+            ->post($endpoint);
+
+            if (! $response->successful()) {
+                Log::error('SupabaseStorageService: Gagal upload raw ke Supabase', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                    'path' => $path,
+                ]);
+                return null;
+            }
+
+            return $this->getPublicUrl($path);
+        } catch (Exception $e) {
+            Log::error('SupabaseStorageService uploadRaw Exception: ' . $e->getMessage(), [
+                'filename' => $filename,
             ]);
             return null;
         }

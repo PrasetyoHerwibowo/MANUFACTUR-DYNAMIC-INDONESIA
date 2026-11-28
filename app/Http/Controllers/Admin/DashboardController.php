@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Machine;
 use App\Models\MachineImage;
+use App\Models\ServiceBooking;
+use App\Models\WarrantyClaim;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Cache;
 
@@ -35,14 +37,6 @@ class DashboardController extends Controller
                 ];
             });
 
-            $recentMachines = Cache::remember('admin_dashboard_recent_machines', 300, function () {
-                return Machine::query()
-                    ->with(['category', 'images'])
-                    ->latest('id')
-                    ->take(5)
-                    ->get();
-            });
-
             /** Distribusi model mesin per jenis mesin untuk grafik donat (dicache 5 menit). */
             $categoryChart = Cache::remember('admin_dashboard_category_chart', 300, function () {
                 return Category::query()
@@ -53,10 +47,15 @@ class DashboardController extends Controller
                     ->get();
             });
 
+            /** Notifikasi operasional layanan purna jual */
+            $pendingServices = Cache::remember('admin_pending_services_count', 60, fn () => ServiceBooking::where('status', ServiceBooking::STATUS_MENUNGGU)->count());
+            $pendingWarranties = Cache::remember('admin_pending_warranties_count', 60, fn () => WarrantyClaim::where('status', WarrantyClaim::STATUS_DALAM_PENINJAUAN)->count());
+
             return view('admin.dashboard', compact(
                 'stats',
-                'recentMachines',
                 'categoryChart',
+                'pendingServices',
+                'pendingWarranties',
             ));
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('DashboardController@index error: ' . $e->getMessage());
@@ -69,12 +68,10 @@ class DashboardController extends Controller
                 'mesin_berfoto' => 0,
                 'foto' => 0,
             ];
-            $recentMachines = collect();
             $categoryChart = collect();
 
             return view('admin.dashboard', compact(
                 'stats',
-                'recentMachines',
                 'categoryChart',
             ))->with('error', 'Gagal memuat sebagian ringkasan data dashboard.');
         }
